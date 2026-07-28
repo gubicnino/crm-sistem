@@ -17,6 +17,11 @@
     "invite:create": "tsx scripts/create-invite.ts",
     "seed:demo": "tsx scripts/seed-demo.ts"
   },
+  "overrides": {
+    "esbuild": "^0.28.1",
+    "postcss": "^8.5.23",
+    "sharp": "^0.35.3"
+  },
   "dependencies": {
     "@auth/drizzle-adapter": "^1.11.3",
     "@base-ui/react": "^1.6.0",
