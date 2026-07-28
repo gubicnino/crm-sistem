@@ -230,6 +230,7 @@ npm run lint
 npx tsc --noEmit         # type check
 npx drizzle-kit generate # create migration from schema changes
 npx drizzle-kit migrate  # apply migrations
+npm run seed:demo        # wipe + recreate a demo trainer with realistic leads, notes, and questions (dev/showcase only)
 ```
 
 ## Working conventions
