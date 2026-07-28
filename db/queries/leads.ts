@@ -126,6 +126,11 @@ export async function createLeadFromIntake(
             source: "application" as const,
             answers: input.answers,
             stage: sql`CASE WHEN ${leads.stage} = 'email_lead' THEN 'application_received'::pipeline_stage ELSE ${leads.stage} END`,
+            // Mirrors the stage CASE above so stageChangedAt only moves when
+            // stage actually does — stuck-lead detection (lib/cron/stuck-leads.ts)
+            // reads this column, and a stale value would corrupt it the moment
+            // a lead legitimately advances via a resubmission.
+            stageChangedAt: sql`CASE WHEN ${leads.stage} = 'email_lead' THEN ${new Date()} ELSE ${leads.stageChangedAt} END`,
           }
         : leadMagnetRefreshFields(input),
     )
@@ -136,13 +141,19 @@ export async function createLeadFromIntake(
 }
 
 /**
- * The ONLY function that may change a lead's stage — see CLAUDE.md's most
- * damaging failure mode (a converted/lost lead still receiving follow-ups).
+ * The only function through which a *user-driven* stage change (kanban drag,
+ * detail dropdown, bulk action) may happen — see CLAUDE.md's most damaging
+ * failure mode (a converted/lost lead still receiving follow-ups).
  * Cancellation on `client`/`lost` lives HERE, not in the caller, specifically
- * so it cannot be forgotten by a new UI call site. Every stage change (kanban
- * drag, detail dropdown, bulk action) must route through this function —
- * enforced by the eslint no-restricted-syntax rule forbidding `.set({ stage`
- * anywhere else (see eslint.config.mjs).
+ * so it cannot be forgotten by a new UI call site.
+ *
+ * The one other place `stage` is written is createLeadFromIntake's own
+ * conflict-path CASE expression above, for the dedup-driven `email_lead` ->
+ * `application_received` auto-advance — that path can never reach a
+ * terminal stage (its CASE only ever targets `application_received`), so it
+ * has no cancellation obligation and deliberately doesn't call this
+ * function. eslint.config.mjs's no-restricted-syntax rule exempts this
+ * whole file rather than special-casing either function.
  */
 export async function setLeadStage(scope: TrainerScope, leadId: string, next: PipelineStage): Promise<Lead> {
   const [updated] = await db
