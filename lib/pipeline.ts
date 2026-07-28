@@ -26,8 +26,6 @@ export function isTerminalStage(stage: PipelineStage): boolean {
 export const STUCK_THRESHOLD_DAYS: Partial<Record<PipelineStage, number>> = {
   application_received: 2,
   contacted: 5,
-  call_scheduled: 3,
-  offer_sent: 7,
 };
 
 export function isStuck(stage: PipelineStage, daysInStage: number): boolean {

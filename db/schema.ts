@@ -37,8 +37,6 @@ export const pipelineStageEnum = pgEnum("pipeline_stage", [
   "email_lead",
   "application_received",
   "contacted",
-  "call_scheduled",
-  "offer_sent",
   "client",
   "lost",
 ]);

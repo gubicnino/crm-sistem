@@ -10,8 +10,6 @@ export const pipelineStageLabels: Record<PipelineStage, string> = {
   email_lead: "E-poštni kontakt",
   application_received: "Prijava prejeta",
   contacted: "Kontaktiran",
-  call_scheduled: "Klic dogovorjen",
-  offer_sent: "Ponudba poslana",
   client: "Stranka",
   lost: "Izgubljen",
 };

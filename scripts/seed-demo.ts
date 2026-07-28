@@ -18,14 +18,7 @@ async function main() {
   const { generateSiteKey } = await import("../lib/site-key");
   const { systemScope } = await import("../lib/tenant");
   type LeadSource = "application" | "lead_magnet";
-  type PipelineStage =
-    | "email_lead"
-    | "application_received"
-    | "contacted"
-    | "call_scheduled"
-    | "offer_sent"
-    | "client"
-    | "lost";
+  type PipelineStage = "email_lead" | "application_received" | "contacted" | "client" | "lost";
   type LeadAnswers = Record<string, string>;
 
   // Re-runnable: wipe any previous demo account first (cascades to trainer,
@@ -93,17 +86,17 @@ async function main() {
       name: "Nina Horvat",
       email: "nina.horvat@example.com",
       source: "application" as const,
-      stage: "call_scheduled" as const,
+      stage: "contacted" as const,
       createdAt: daysAgo(3),
       stageChangedAt: daysAgo(1),
       answers: { goal: "Splošna kondicija", experience: "Več kot 3 leta" },
     },
     {
-      // Stuck: offer_sent threshold is 7 days (lib/pipeline.ts) — this one is at 8.
+      // Stuck: contacted threshold is 5 days (lib/pipeline.ts) — this one is at 8.
       name: "Luka Kranjc",
       email: "luka.kranjc@example.com",
       source: "application" as const,
-      stage: "offer_sent" as const,
+      stage: "contacted" as const,
       createdAt: daysAgo(12),
       stageChangedAt: daysAgo(8),
       answers: { goal: "Priprava na maraton", experience: "1-3 leta" },
