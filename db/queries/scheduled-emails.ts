@@ -1,6 +1,6 @@
-import { and, count, eq, gt, inArray, lt } from "drizzle-orm";
+import { and, count, desc, eq, gt, inArray, lt } from "drizzle-orm";
 import { db } from "@/db";
-import { scheduledEmails, type NewScheduledEmail, type ScheduledEmail } from "@/db/schema";
+import { leads, scheduledEmails, type NewScheduledEmail, type ScheduledEmail } from "@/db/schema";
 import type { ScheduledEmailStatus } from "@/db/types";
 import { RECONCILE_RETRY_MAX_HOURS, RECONCILE_RETRY_MIN_MINUTES } from "@/lib/email/constants";
 import { scoped, type TrainerScope } from "@/lib/tenant";
@@ -144,4 +144,35 @@ export async function countScheduledEmailsByStatus(
     .from(scheduledEmails)
     .where(scoped(scheduledEmails, scope, inArray(scheduledEmails.status, statuses)));
   return row?.total ?? 0;
+}
+
+export interface ScheduledEmailWithLead extends ScheduledEmail {
+  leadName: string | null;
+  leadEmail: string;
+}
+
+/** Powers the /emails dashboard tab — every scheduled_emails row for this
+ *  trainer, joined with the lead's display name/email. */
+export async function listScheduledEmailsForTrainer(scope: TrainerScope): Promise<ScheduledEmailWithLead[]> {
+  return db
+    .select({
+      id: scheduledEmails.id,
+      trainerId: scheduledEmails.trainerId,
+      leadId: scheduledEmails.leadId,
+      sequenceStep: scheduledEmails.sequenceStep,
+      resendEmailId: scheduledEmails.resendEmailId,
+      scheduledFor: scheduledEmails.scheduledFor,
+      status: scheduledEmails.status,
+      sentAt: scheduledEmails.sentAt,
+      canceledAt: scheduledEmails.canceledAt,
+      lastError: scheduledEmails.lastError,
+      createdAt: scheduledEmails.createdAt,
+      updatedAt: scheduledEmails.updatedAt,
+      leadName: leads.name,
+      leadEmail: leads.email,
+    })
+    .from(scheduledEmails)
+    .innerJoin(leads, eq(scheduledEmails.leadId, leads.id))
+    .where(scoped(scheduledEmails, scope))
+    .orderBy(desc(scheduledEmails.scheduledFor));
 }

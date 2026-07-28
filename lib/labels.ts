@@ -1,4 +1,5 @@
 import type { LeadSource, PipelineStage } from "@/db/schema";
+import type { ScheduledEmailStatus } from "@/db/types";
 
 /**
  * Exhaustive Record<enum, string> — adding a new pipeline_stage or lead_source
@@ -17,4 +18,13 @@ export const pipelineStageLabels: Record<PipelineStage, string> = {
 export const leadSourceLabels: Record<LeadSource, string> = {
   application: "Prijava",
   lead_magnet: "Brezplačni vodič",
+};
+
+export const scheduledEmailStatusLabels: Record<ScheduledEmailStatus, string> = {
+  pending: "V pripravi",
+  scheduled: "Načrtovano",
+  sent: "Poslano",
+  canceled: "Preklicano",
+  orphaned: "Osirotelo",
+  cancel_failed: "Napaka pri preklicu",
 };

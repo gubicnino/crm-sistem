@@ -7,6 +7,8 @@ export const sl = {
   nav: {
     leads: "Stranke",
     pipeline: "Cevovod",
+    applications: "Izpolnjene forme",
+    emails: "Emaili",
     analytics: "Analitika",
     settings: "Nastavitve",
     logout: "Odjava",
@@ -71,6 +73,19 @@ export const sl = {
   },
   pipeline: {
     title: "Cevovod",
+  },
+  applications: {
+    title: "Izpolnjene forme",
+    empty: "Ni še nobene izpolnjene prijave.",
+  },
+  emails: {
+    title: "Emaili",
+    empty: "Ni še nobenega načrtovanega e-sporočila.",
+    columnLead: "Stranka",
+    columnStep: "Korak",
+    columnStatus: "Status",
+    columnScheduledFor: "Datum",
+    cancelButton: "Prekliči",
   },
   analytics: {
     title: "Analitika",
