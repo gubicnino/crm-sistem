@@ -80,6 +80,53 @@ Never let the public endpoint accept a `trainer_id` directly. It accepts `site_k
 - No middleware for custom domain routing. No rendering of trainer marketing pages.
 - The only contract with trainer sites is the `POST /api/leads` payload shape. If that shape changes, it is a **breaking change** — version it (`/api/v1/leads`) rather than silently altering it.
 
+### 4. Lead deduplication on form resubmission
+
+The public ingest endpoint (`/api/leads`) must match incoming `application`
+submissions against existing leads for that trainer **by email** — never
+create a second lead for a repeat submission.
+
+Rules:
+- Look up an existing lead scoped to `trainerId` + `email`.
+- If found: always overwrite `answers` with the latest submission (the
+  trainer wants current answers, not a history of old ones).
+- Stage handling depends on where the lead currently sits:
+  - If `stage` is still `email_lead` (not yet contacted), auto-advance it
+    to `application_received`.
+  - If `stage` is `contacted`, `client`, or `lost`, **do not move it** —
+    only `answers` are refreshed. A converted or already-contacted lead
+    must never jump backward on the kanban board just because they filled
+    the form out again.
+- If no existing lead is found, create a new one at `application_received`
+  as usual.
+
+## Dashboard tabs
+
+The CRM dashboard (`app/(dashboard)/**`) has six tabs. The trainer is the
+only user of all of them — the only thing you (the operator) ever touch is
+provisioning a trainer's `site_key`.
+
+1. **Stranke** (`/leads`) — full list of all leads regardless of stage or
+   source. Full CRUD: view, edit, delete, manually create a lead.
+2. **Kanban pipeline** (`/pipeline`) — drag-and-drop board over the 4
+   pipeline stages, plus a separate area/column for `lost` leads. See
+   "Lead deduplication on form resubmission" for how resubmission affects
+   card position.
+3. **Vprašanja** (`/settings/questions`) — trainer-facing builder for
+   `trainers.applicationQuestions`. Must be non-technical: the trainer
+   using it has no dev background — no raw JSON editing, no jargon.
+4. **Izpolnjene forme** (`/applications`) — dedicated view of
+   `application`-source leads together with their submitted `answers`.
+   Distinct from "Stranke": this one is answer-focused (drill into what a
+   specific lead said), not a general CRUD list.
+5. **Analitika** (`/analytics`) — funnel/conversion metrics, branching on
+   `source` per the two-lead-source split.
+6. **Emaili** (`/emails`) — visibility into `scheduled_emails`: which
+   sequence step went to which lead, `scheduled` / `sent` / `canceled`
+   status. A manual cancel action must go through the same cancellation
+   path as automatic cancellation (see "Follow-up emails" →
+   "Cancellation is mandatory").
+
 ## Data model (Drizzle schema)
 
 Core tables in `db/schema.ts`:
@@ -104,7 +151,7 @@ Never collapse these into one type. Analytics, pipeline, and email sequences all
 
 ### Pipeline stages (enum, in order)
 
-`email_lead` → `application_received` → `contacted` → `call_scheduled` → `offer_sent` → `client`
+`email_lead` → `application_received` → `contacted` → `client`
 
 Plus a terminal `lost` stage. Store as a Postgres enum; keep the Slovenian display labels in the UI layer, not the DB.
 
@@ -130,10 +177,13 @@ The trainer's external React site fetches this config (or has it baked in at bui
 app/
   (public)/            # marketing site for the product itself
   (dashboard)/         # authenticated trainer CRM — every page requires a session
-    leads/
-    pipeline/
+    leads/              # Stranke — full CRUD lead list, all stages/sources
+    pipeline/           # Kanban pipeline board
+    applications/       # Izpolnjene forme — application leads + their answers
     analytics/
+    emails/             # scheduled/sent email visibility
     settings/
+      questions/         # Vprašanja — trainer's application question builder
   api/
     leads/route.ts     # PUBLIC ingest endpoint, CORS open
     cron/
