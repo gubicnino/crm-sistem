@@ -22,6 +22,7 @@ async function sendReservedStep(
   ctx: SequenceContext,
   unsubLink: string,
   to: string,
+  from: string,
   scheduledAt?: string,
 ): Promise<void> {
   const { subject, react } = renderSequenceStep(step, ctx, unsubLink);
@@ -31,7 +32,7 @@ async function sendReservedStep(
     // we lost (crash, timeout) returns the SAME Resend email id — the cancel
     // handle is recoverable rather than lost forever.
     const { data, error } = await resend.emails.send(
-      { from: FROM_EMAIL, to, subject, react, scheduledAt },
+      { from, to, subject, react, scheduledAt },
       { idempotencyKey: row.id },
     );
 
@@ -91,11 +92,12 @@ export async function scheduleSequenceForLead(scope: TrainerScope, lead: Lead): 
   const trainer = await getTrainer(scope);
   const link = unsubscribeLink(lead.id);
   const ctx = { leadName: lead.name, trainerName: trainer?.name ?? "" };
+  const from = trainer?.fromEmail ?? FROM_EMAIL;
 
   for (const row of reserved) {
     const step = steps.find((s) => s.id === row.sequenceStep);
     if (!step) continue; // unreachable — sequences.ts asserts ids are stable
-    await sendReservedStep(row, step, ctx, link, lead.email, row.scheduledFor.toISOString());
+    await sendReservedStep(row, step, ctx, link, lead.email, from, row.scheduledFor.toISOString());
   }
 }
 
@@ -117,6 +119,7 @@ export async function retryPendingScheduledEmail(scope: TrainerScope, row: Sched
   const trainer = await getTrainer(scope);
   const link = unsubscribeLink(lead.id);
   const ctx = { leadName: lead.name, trainerName: trainer?.name ?? "" };
+  const from = trainer?.fromEmail ?? FROM_EMAIL;
 
-  await sendReservedStep(row, step, ctx, link, lead.email);
+  await sendReservedStep(row, step, ctx, link, lead.email, from);
 }

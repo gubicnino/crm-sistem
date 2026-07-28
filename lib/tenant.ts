@@ -62,10 +62,11 @@ export async function requireTrainerOrThrow(): Promise<TrainerScope> {
  *  - cron_daily         daily cron, iterating all trainers server-side
  *  - unsubscribe_token  public unsubscribe page, after verifying the HMAC token
  *  - registration       invite redemption, immediately after creating the trainer row
+ *  - operator_cli       one-off scripts run by the operator from a terminal (no session)
  */
 export function systemScope(
   trainerId: string,
-  reason: "site_key_ingest" | "form_config" | "cron_daily" | "unsubscribe_token" | "registration",
+  reason: "site_key_ingest" | "form_config" | "cron_daily" | "unsubscribe_token" | "registration" | "operator_cli",
 ): TrainerScope {
   void reason; // unused at runtime — exists so every call site states its justification
   return mintScope(trainerId);

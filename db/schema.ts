@@ -129,6 +129,12 @@ export const trainers = pgTable(
     siteKey: text("site_key").notNull().unique(),
     applicationQuestions: jsonb("application_questions").$type<ApplicationQuestion[]>().notNull().default([]),
     digestEnabled: boolean("digest_enabled").notNull().default(true),
+    /** Per-trainer override of the RFC "Name <email>" sequence sender, e.g.
+     *  "Janez Novak <janez@sub.innosplet.com>". Null falls back to the global
+     *  RESEND_FROM_EMAIL. Set only via scripts/set-trainer-from.ts — the
+     *  domain must already be verified in Resend by the operator; this column
+     *  does not verify anything itself. */
+    fromEmail: text("from_email"),
     ...timestamps,
   },
   (t) => [

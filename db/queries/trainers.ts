@@ -39,6 +39,24 @@ export async function listTrainersWithDigestEnabled(): Promise<Trainer[]> {
   return db.select().from(trainers).where(eq(trainers.digestEnabled, true));
 }
 
+/**
+ * Unscoped by necessity: scripts/set-trainer-from.ts is run by the operator
+ * from a terminal, with no session to derive a TrainerScope from — the
+ * trainer's own login email is the only handle the operator has.
+ */
+export async function getTrainerByEmail(email: string): Promise<Trainer | null> {
+  const [trainer] = await db.select().from(trainers).where(eq(trainers.email, email)).limit(1);
+  return trainer ?? null;
+}
+
+export async function setTrainerFromEmail(scope: TrainerScope, fromEmail: string | null): Promise<Trainer> {
+  const [updated] = await db.update(trainers).set({ fromEmail }).where(eq(trainers.id, scope.trainerId)).returning();
+  if (!updated) {
+    throw new Error("Trainer not found.");
+  }
+  return updated;
+}
+
 export async function updateApplicationQuestions(
   scope: TrainerScope,
   questions: ApplicationQuestion[],
