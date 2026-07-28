@@ -1,4 +1,4 @@
-import { QuestionsEditor } from "@/components/settings/questions-editor";
+import Link from "next/link";
 import { SiteKeyCard } from "@/components/settings/site-key-card";
 import { getTrainer } from "@/db/queries/trainers";
 import { sl } from "@/lib/strings";
@@ -13,7 +13,9 @@ export default async function SettingsPage() {
     <div className="flex flex-col gap-6">
       <h1 className="text-xl font-semibold">{sl.settings.title}</h1>
       <SiteKeyCard siteKey={trainer.siteKey} />
-      <QuestionsEditor initialQuestions={trainer.applicationQuestions} />
+      <Link href="/settings/questions" className="text-sm font-medium hover:underline">
+        {sl.settings.questionsTitle} &rarr;
+      </Link>
     </div>
   );
 }
