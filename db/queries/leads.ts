@@ -1,4 +1,4 @@
-import { and, desc, eq, gte, isNull, notExists, notInArray } from "drizzle-orm";
+import { and, desc, eq, gte, isNull, notExists, notInArray, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { leads, scheduledEmails, type Lead, type LeadSource, type PipelineStage } from "@/db/schema";
 import type { LeadAnswers } from "@/db/types";
@@ -46,14 +46,53 @@ export interface CreateLeadFromIntakeResult {
 }
 
 /**
- * Upsert on (trainerId, email, source) — see the unique index in db/schema.ts.
- * A repeat submission from the same person updates the existing row instead
- * of creating a duplicate, and — because the caller only schedules an email
- * sequence when `isNew` is true — can't double-schedule one either.
+ * Fields a non-`application` (i.e. `lead_magnet`) resubmission may refresh —
+ * `name`/`phone` only, and only the ones this particular submission actually
+ * provided. Drizzle's `.set()` throws "No values to set" if given an object
+ * with zero defined keys, which a bare email-only lead_magnet resubmission
+ * (no name, no phone — the common case; CLAUDE.md: lead_magnet data is
+ * "usually just email (+ maybe name)") would otherwise trigger. When neither
+ * is provided there is nothing to refresh, so fall back to touching
+ * `updatedAt` — a harmless, self-consistent write that keeps `.set()`
+ * well-formed without silently clearing a previously known name/phone (which
+ * leaving them `undefined` would NOT do, but coalescing them to `null`
+ * would have).
+ */
+function leadMagnetRefreshFields(input: CreateLeadFromIntakeInput): {
+  name?: string;
+  phone?: string;
+  updatedAt?: Date;
+} {
+  const refresh: { name?: string; phone?: string; updatedAt?: Date } = {};
+  if (input.name !== undefined) refresh.name = input.name;
+  if (input.phone !== undefined) refresh.phone = input.phone;
+  if (Object.keys(refresh).length === 0) {
+    refresh.updatedAt = new Date();
+  }
+  return refresh;
+}
+
+/**
+ * Upsert on (trainerId, email) — see the unique index in db/schema.ts. A
+ * repeat submission from the same person (regardless of source) updates the
+ * existing row instead of creating a duplicate, and — because the caller
+ * only schedules an email sequence when `isNew` is true — can't
+ * double-schedule one either.
  *
  * Implemented as insert-with-onConflictDoNothing, then a follow-up update on
  * conflict, rather than a single onConflictDoUpdate: this makes "was it a
  * genuine insert" a plain JS boolean instead of a Postgres `xmax = 0` trick.
+ *
+ * Stage handling on conflict, per CLAUDE.md's "Lead deduplication on form
+ * resubmission": only an incoming `application` submission can change
+ * `stage`, and only by advancing out of `email_lead` into
+ * `application_received` — a lead already `contacted`, `client`, or `lost`
+ * must never move backward on the kanban board just because the form was
+ * filled out again. A `lead_magnet` resubmission never touches `stage`,
+ * `source`, or `answers` — it can only refresh `name`/`phone`. An
+ * `application` resubmission additionally merges `source` to `application`
+ * and overwrites `answers`, even if the existing row was `lead_magnet` — one
+ * email is one lead, regardless of which form it came through.
  */
 export async function createLeadFromIntake(
   scope: TrainerScope,
@@ -70,20 +109,27 @@ export async function createLeadFromIntake(
       stage: input.stage,
       answers: input.answers,
     })
-    .onConflictDoNothing({ target: [leads.trainerId, leads.email, leads.source] })
+    .onConflictDoNothing({ target: [leads.trainerId, leads.email] })
     .returning();
 
   if (inserted) {
     return { lead: inserted, isNew: true };
   }
 
-  // Conflict: this (trainer, email, source) already exists. Update the fields
-  // a resubmission might legitimately change — never `stage`, since a repeat
-  // form submission must not reset a lead's pipeline position.
   const [updated] = await db
     .update(leads)
-    .set({ name: input.name, phone: input.phone, answers: input.answers })
-    .where(scoped(leads, scope, eq(leads.email, input.email), eq(leads.source, input.source)))
+    .set(
+      input.source === "application"
+        ? {
+            name: input.name,
+            phone: input.phone,
+            source: "application" as const,
+            answers: input.answers,
+            stage: sql`CASE WHEN ${leads.stage} = 'email_lead' THEN 'application_received'::pipeline_stage ELSE ${leads.stage} END`,
+          }
+        : leadMagnetRefreshFields(input),
+    )
+    .where(scoped(leads, scope, eq(leads.email, input.email)))
     .returning();
 
   return { lead: updated, isNew: false };

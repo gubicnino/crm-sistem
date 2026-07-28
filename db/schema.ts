@@ -165,10 +165,14 @@ export const leads = pgTable(
   (t) => [
     index("leads_trainer_id_stage_idx").on(t.trainerId, t.stage),
     index("leads_trainer_id_created_at_idx").on(t.trainerId, t.createdAt.desc()),
-    // Makes public ingest an upsert: a repeat submission (same trainer/email/source)
-    // updates the existing lead instead of creating a duplicate, and — because
-    // scheduling only fires on a genuine insert — can't double-schedule a sequence.
-    uniqueIndex("leads_trainer_id_email_source_unique").on(t.trainerId, t.email, t.source),
+    // Makes public ingest an upsert: a repeat submission (same trainer/email)
+    // updates the existing lead instead of creating a duplicate, and —
+    // because scheduling only fires on a genuine insert — can't
+    // double-schedule a sequence. Matched by email alone (not email+source):
+    // a lead_magnet contact who later submits the full application form
+    // merges into the same row rather than creating a second one — see
+    // createLeadFromIntake in db/queries/leads.ts.
+    uniqueIndex("leads_trainer_id_email_unique").on(t.trainerId, t.email),
   ],
 );
 
