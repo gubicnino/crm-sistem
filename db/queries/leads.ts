@@ -4,6 +4,7 @@ import { leads, scheduledEmails, type Lead, type LeadSource, type PipelineStage 
 import type { LeadAnswers } from "@/db/types";
 import { scoped, type TrainerScope } from "@/lib/tenant";
 import { isTerminalStage, TERMINAL_STAGES } from "@/lib/pipeline";
+import type { ManualLeadInput } from "@/lib/validation/leads";
 
 export interface ListLeadsFilters {
   stage?: PipelineStage;
@@ -215,4 +216,46 @@ export async function listLeadsMissingScheduledEmails(sinceDays: number, limit: 
       ),
     )
     .limit(limit);
+}
+
+/** A trainer manually adding a lead always starts it cold, at the same entry
+ *  point as a lead_magnet capture — see CLAUDE.md's pipeline stages. */
+export async function createLead(scope: TrainerScope, input: ManualLeadInput): Promise<Lead> {
+  const [lead] = await db
+    .insert(leads)
+    .values({
+      trainerId: scope.trainerId,
+      name: input.name,
+      email: input.email,
+      phone: input.phone,
+      source: "application",
+      stage: "email_lead",
+    })
+    .returning();
+  return lead;
+}
+
+export async function updateLead(
+  scope: TrainerScope,
+  leadId: string,
+  input: ManualLeadInput,
+): Promise<Lead | null> {
+  const [updated] = await db
+    .update(leads)
+    .set({ name: input.name, email: input.email, phone: input.phone })
+    .where(scoped(leads, scope, eq(leads.id, leadId)))
+    .returning();
+  return updated ?? null;
+}
+
+/** Returns whether a row was actually deleted. Caller is responsible for
+ *  canceling outstanding sequence emails first — see deleteLeadAction in
+ *  lib/actions/leads.ts — since the scheduled_emails cascade delete here
+ *  only removes the local record, not the Resend-side scheduled send. */
+export async function deleteLead(scope: TrainerScope, leadId: string): Promise<boolean> {
+  const rows = await db
+    .delete(leads)
+    .where(scoped(leads, scope, eq(leads.id, leadId)))
+    .returning();
+  return rows.length > 0;
 }

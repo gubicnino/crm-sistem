@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AnswersView } from "@/components/leads/answers-view";
+import { DeleteLeadButton } from "@/components/leads/delete-lead-button";
+import { EditLeadDialog } from "@/components/leads/edit-lead-dialog";
 import { NotesPanel } from "@/components/leads/notes-panel";
 import { StageActions } from "@/components/leads/stage-actions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -32,7 +34,14 @@ export default async function LeadDetailPage({ params }: { params: Promise<{ id:
             {leadSourceLabels[lead.source]} · {pipelineStageLabels[lead.stage]}
           </p>
         </div>
-        <StageActions leadId={lead.id} currentStage={lead.stage} />
+        <div className="flex items-center gap-2">
+          <StageActions leadId={lead.id} currentStage={lead.stage} />
+          <EditLeadDialog
+            leadId={lead.id}
+            defaultValues={{ name: lead.name ?? undefined, email: lead.email, phone: lead.phone ?? undefined }}
+          />
+          <DeleteLeadButton leadId={lead.id} />
+        </div>
       </div>
 
       {lead.unsubscribedAt && <p className="text-sm text-destructive">{sl.leads.unsubscribedNotice}</p>}
