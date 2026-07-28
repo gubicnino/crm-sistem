@@ -16,6 +16,7 @@
     "email": "email dev --dir lib/email/templates",
     "invite:create": "tsx scripts/create-invite.ts",
     "trainer:set-from": "tsx scripts/set-trainer-from.ts",
+    "admin:create": "tsx scripts/create-admin.ts",
     "seed:demo": "tsx scripts/seed-demo.ts"
   },
   "overrides": {

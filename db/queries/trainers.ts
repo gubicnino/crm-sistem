@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import { db } from "@/db";
 import { trainers, type Trainer } from "@/db/schema";
 import type { ApplicationQuestion } from "@/db/types";
@@ -26,17 +26,27 @@ export async function getTrainer(scope: TrainerScope): Promise<Trainer | null> {
  * endpoints resolve a trainer from a caller-supplied site_key, before a
  * TrainerScope can exist. A miss must be treated as "not found" by the
  * caller and answered identically to a valid-but-quiet request — never a 404
- * — so this endpoint can't be used to enumerate valid site keys.
+ * — so this endpoint can't be used to enumerate valid site keys. A
+ * deactivated trainer's site key must behave identically to an unknown one,
+ * per db/queries/admin.ts's deactivateTrainer — hence isNull(deactivatedAt).
  */
 export async function getTrainerBySiteKey(siteKey: string): Promise<Trainer | null> {
-  const [trainer] = await db.select().from(trainers).where(eq(trainers.siteKey, siteKey)).limit(1);
+  const [trainer] = await db
+    .select()
+    .from(trainers)
+    .where(and(eq(trainers.siteKey, siteKey), isNull(trainers.deactivatedAt)))
+    .limit(1);
   return trainer ?? null;
 }
 
 /** Cross-tenant by necessity: the cron digest task iterates every trainer
- *  who wants a daily email. */
+ *  who wants a daily email. Excludes deactivated trainers — no point digesting
+ *  a locked-out account. */
 export async function listTrainersWithDigestEnabled(): Promise<Trainer[]> {
-  return db.select().from(trainers).where(eq(trainers.digestEnabled, true));
+  return db
+    .select()
+    .from(trainers)
+    .where(and(eq(trainers.digestEnabled, true), isNull(trainers.deactivatedAt)));
 }
 
 /**

@@ -30,7 +30,10 @@ export function proxy(request: NextRequest) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
   if (hasSession && isAuthPage) {
-    return NextResponse.redirect(new URL("/leads", request.url));
+    // Not /leads directly — an admin has no trainers row, so requireTrainer()
+    // would bounce them straight back to /login here. /after-login resolves
+    // the real destination server-side, by role.
+    return NextResponse.redirect(new URL("/after-login", request.url));
   }
   return NextResponse.next();
 }

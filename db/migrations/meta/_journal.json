@@ -29,6 +29,13 @@
       "when": 1785256428129,
       "tag": "0003_sticky_wiccan",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1785261484538,
+      "tag": "0004_safe_namor",
+      "breakpoints": true
     }
   ]
 }

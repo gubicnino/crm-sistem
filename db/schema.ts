@@ -20,6 +20,7 @@ import type {
   CronRunStatus,
   LeadAnswers,
   ScheduledEmailStatus,
+  UserRole,
 } from "./types";
 
 // ---------------------------------------------------------------------------
@@ -66,6 +67,10 @@ export const users = pgTable("users", {
   image: text("image"),
   /** Set only for the Credentials provider. Null is valid (e.g. a future OAuth-only user). */
   passwordHash: text("password_hash"),
+  /** text + $type<> rather than a pgEnum, per the vendored drizzle skill —
+   *  CLAUDE.md's "ask first" enum gate covers pipeline_stage/lead_source only.
+   *  An "admin" (operator) row has no matching trainers row — see UserRole. */
+  role: text("role").$type<UserRole>().notNull().default("trainer"),
   ...timestamps,
 });
 
@@ -135,6 +140,10 @@ export const trainers = pgTable(
      *  domain must already be verified in Resend by the operator; this column
      *  does not verify anything itself. */
     fromEmail: text("from_email"),
+    /** Set by the operator console (lib/actions/admin.ts) to lock a trainer
+     *  out. A soft state, not a hard delete — see db/queries/admin.ts's
+     *  deactivateTrainer for why (cancels Resend sequences first). Null = active. */
+    deactivatedAt: timestamptz("deactivated_at"),
     ...timestamps,
   },
   (t) => [

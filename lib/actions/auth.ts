@@ -39,7 +39,7 @@ export async function loginAction(_prevState: ActionResult | undefined, formData
     await signIn("credentials", {
       email: parsed.data.email,
       password: parsed.data.password,
-      redirectTo: "/leads",
+      redirectTo: "/after-login",
     });
   } catch (err) {
     // signIn() throws AuthError (specifically CredentialsSignin) when
@@ -92,7 +92,7 @@ export async function redeemInviteAction(
     await signIn("credentials", {
       email: invite.email,
       password: parsed.data.password,
-      redirectTo: "/leads",
+      redirectTo: "/after-login",
     });
   } catch (err) {
     if (err instanceof AuthError) {

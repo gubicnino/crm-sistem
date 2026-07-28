@@ -95,6 +95,19 @@ export async function listCancelableScheduledEmails(
 }
 
 /**
+ * Same as listCancelableScheduledEmails, minus the leadId filter — every
+ * non-terminal row for the whole trainer. Used by
+ * lib/email/cancel.ts's cancelAllSequencesForTrainer when the operator
+ * console deactivates a trainer (db/queries/admin.ts's setTrainerDeactivated).
+ */
+export async function listCancelableScheduledEmailsForTrainer(scope: TrainerScope): Promise<ScheduledEmail[]> {
+  return db
+    .select()
+    .from(scheduledEmails)
+    .where(scoped(scheduledEmails, scope, inArray(scheduledEmails.status, ["scheduled", "pending"])));
+}
+
+/**
  * Cross-tenant by necessity: the cron reconciler's retry window. Pending rows
  * aged RECONCILE_RETRY_MIN_MINUTES-RECONCILE_RETRY_MAX_HOURS get a fresh send
  * attempt with the same idempotency key; rows outside that window are handled

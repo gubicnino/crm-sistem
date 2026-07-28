@@ -46,3 +46,9 @@ export interface CronRunStats {
 }
 
 export type CronRunStatus = "running" | "completed" | "failed";
+
+/** Who a login is. An "admin" (operator) has NO trainers row — no tenant of
+ *  their own; they act only by impersonating a trainer (see lib/impersonation.ts).
+ *  Created exclusively by scripts/create-admin.ts; there is no admin signup or
+ *  invite flow. */
+export type UserRole = "trainer" | "admin";

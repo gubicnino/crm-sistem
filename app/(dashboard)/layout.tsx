@@ -1,47 +1,26 @@
-import Link from "next/link";
-import { Button } from "@/components/ui/button";
+import { AppSidebar } from "@/components/dashboard/app-sidebar";
+import { ImpersonationBanner } from "@/components/dashboard/impersonation-banner";
+import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
+import { Separator } from "@/components/ui/separator";
 import { getTrainer } from "@/db/queries/trainers";
 import { logoutAction } from "@/lib/actions/auth";
-import { requireTrainer } from "@/lib/tenant";
-import { sl } from "@/lib/strings";
+import { getImpersonation, requireTrainer } from "@/lib/tenant";
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const scope = await requireTrainer();
-  const trainer = await getTrainer(scope);
+  const [trainer, impersonation] = await Promise.all([getTrainer(scope), getImpersonation()]);
 
   return (
-    <div className="flex flex-1">
-      <aside className="flex w-56 flex-col gap-6 border-r p-4">
-        <nav className="flex flex-col gap-1">
-          <Link href="/leads" className="text-sm font-medium">
-            {sl.nav.leads}
-          </Link>
-          <Link href="/pipeline" className="text-sm font-medium">
-            {sl.nav.pipeline}
-          </Link>
-          <Link href="/applications" className="text-sm font-medium">
-            {sl.nav.applications}
-          </Link>
-          <Link href="/emails" className="text-sm font-medium">
-            {sl.nav.emails}
-          </Link>
-          <Link href="/analytics" className="text-sm font-medium">
-            {sl.nav.analytics}
-          </Link>
-          <Link href="/settings" className="text-sm font-medium">
-            {sl.nav.settings}
-          </Link>
-        </nav>
-        <div className="mt-auto flex flex-col gap-2">
-          {trainer && <p className="truncate text-xs text-muted-foreground">{trainer.name}</p>}
-          <form action={logoutAction}>
-            <Button type="submit" variant="outline" size="sm" className="w-full">
-              {sl.nav.logout}
-            </Button>
-          </form>
-        </div>
-      </aside>
-      <main className="flex-1 p-6">{children}</main>
-    </div>
+    <SidebarProvider>
+      <AppSidebar trainerName={trainer?.name ?? null} logoutAction={logoutAction} />
+      <SidebarInset>
+        {impersonation && <ImpersonationBanner trainerName={trainer?.name ?? null} />}
+        <header className="flex h-12 shrink-0 items-center gap-2 border-b px-4">
+          <SidebarTrigger />
+          <Separator orientation="vertical" className="h-4" />
+        </header>
+        <main className="flex-1 p-6">{children}</main>
+      </SidebarInset>
+    </SidebarProvider>
   );
 }

@@ -50,4 +50,15 @@ describe("systemScope", () => {
     const s = systemScope("abc-123", "site_key_ingest");
     expect(s.trainerId).toBe("abc-123");
   });
+
+  it("mints a scope for the admin_console reason", () => {
+    const s = systemScope("abc-123", "admin_console");
+    expect(s.trainerId).toBe("abc-123");
+  });
+
+  it("rejects an arbitrary reason string at compile time", () => {
+    // @ts-expect-error "not_a_real_reason" isn't in the closed union — this
+    // guards against someone widening it to `string` later.
+    systemScope("abc-123", "not_a_real_reason");
+  });
 });

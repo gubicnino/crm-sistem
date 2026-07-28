@@ -9,8 +9,6 @@ config({ path: ".env.local" });
  * The from-address's domain must already be verified in the Resend dashboard
  * by the operator before this override takes effect, or sends will fail.
  */
-const FROM_EMAIL_PATTERN = /^.+ <([^<>@\s]+@[^<>@\s]+)>$/;
-
 async function main() {
   const [trainerEmail, value] = process.argv.slice(2);
   if (!trainerEmail || !value) {
@@ -19,9 +17,9 @@ async function main() {
     process.exit(1);
   }
 
-  const { z } = await import("zod");
   const { getTrainerByEmail, setTrainerFromEmail } = await import("../db/queries/trainers");
   const { systemScope } = await import("../lib/tenant");
+  const { fromEmailSchema } = await import("../lib/validation/admin");
 
   const trainer = await getTrainerByEmail(trainerEmail);
   if (!trainer) {
@@ -36,20 +34,15 @@ async function main() {
     return;
   }
 
-  const match = FROM_EMAIL_PATTERN.exec(value);
-  if (!match) {
-    console.error('Expected the format: "Ime Priimek <ime@sub.domain.com>"');
-    process.exit(1);
-  }
-  const emailCheck = z.email().safeParse(match[1]);
-  if (!emailCheck.success) {
-    console.error(`"${match[1]}" is not a valid email address.`);
+  const parsed = fromEmailSchema.safeParse(value);
+  if (!parsed.success) {
+    console.error(parsed.error.issues[0]?.message ?? "Invalid value.");
     process.exit(1);
   }
 
-  await setTrainerFromEmail(scope, value);
+  await setTrainerFromEmail(scope, parsed.data);
   console.log(`Set from-email for ${trainer.name} (${trainerEmail}):`);
-  console.log(`  ${value}`);
+  console.log(`  ${parsed.data}`);
   console.log("Make sure that domain is verified in the Resend dashboard, or sends will fail.");
 }
 
