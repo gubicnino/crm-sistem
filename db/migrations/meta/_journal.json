@@ -8,6 +8,20 @@
       "when": 1785170429663,
       "tag": "0000_open_purifiers",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1785237091051,
+      "tag": "0001_shrink_pipeline_stage_enum",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1785238595972,
+      "tag": "0002_lead_email_only_unique_index",
+      "breakpoints": true
     }
   ]
 }

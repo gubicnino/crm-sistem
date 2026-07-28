@@ -6,6 +6,7 @@ import {
 import { retryPendingScheduledEmail, scheduleSequenceForLead } from "@/lib/email/schedule";
 import { MAX_RECONCILE_LEADS_PER_RUN, MAX_RECONCILE_SENDS_PER_RUN } from "@/lib/cron/limits";
 import { systemScope } from "@/lib/tenant";
+import { isTerminalStage } from "@/lib/pipeline";
 
 export interface ReconcileStats {
   reconciledLeads: number;
@@ -62,7 +63,7 @@ export async function reconcile(): Promise<ReconcileStats> {
       // Skip if the lead vanished, unsubscribed, or already reached a
       // terminal stage since this row was reserved — never resurrect a
       // sequence for someone who opted out or already converted/was lost.
-      if (!lead || lead.unsubscribedAt || lead.stage === "client" || lead.stage === "lost") continue;
+      if (!lead || lead.unsubscribedAt || isTerminalStage(lead.stage)) continue;
       const scope = systemScope(lead.trainerId, "cron_daily");
       await retryPendingScheduledEmail(scope, row, lead);
       stats.reconciledSends++;

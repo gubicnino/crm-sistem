@@ -7,6 +7,8 @@ export const sl = {
   nav: {
     leads: "Stranke",
     pipeline: "Cevovod",
+    applications: "Izpolnjene forme",
+    emails: "Emaili",
     analytics: "Analitika",
     settings: "Nastavitve",
     logout: "Odjava",
@@ -52,6 +54,17 @@ export const sl = {
     stopSequence: "Ustavi e-sporočila",
     stopSequenceConfirm: "E-sporočila za to stranko so bila ustavljena.",
     unsubscribedNotice: "Ta stranka se je odjavila od e-sporočil.",
+    addLead: "Dodaj stranko",
+    editLead: "Uredi",
+    saveLead: "Shrani",
+    createSuccess: "Stranka je bila dodana.",
+    updateSuccess: "Spremembe so bile shranjene.",
+    duplicateEmail: "Stranka s tem e-poštnim naslovom že obstaja.",
+    deleteLead: "Izbriši stranko",
+    deleteLeadConfirmTitle: "Izbriši stranko?",
+    deleteLeadConfirmBody:
+      "Tega dejanja ni mogoče razveljaviti. Izbrisani bodo tudi vsi zapiski in načrtovana e-sporočila za to stranko.",
+    cancelButton: "Prekliči",
     notesTitle: "Zapiski",
     notesEmpty: "Ni še zapiskov.",
     addNotePlaceholder: "Dodaj zapisek …",
@@ -60,6 +73,19 @@ export const sl = {
   },
   pipeline: {
     title: "Cevovod",
+  },
+  applications: {
+    title: "Izpolnjene forme",
+    empty: "Ni še nobene izpolnjene prijave.",
+  },
+  emails: {
+    title: "Emaili",
+    empty: "Ni še nobenega načrtovanega e-sporočila.",
+    columnLead: "Stranka",
+    columnStep: "Korak",
+    columnStatus: "Status",
+    columnScheduledFor: "Datum",
+    cancelButton: "Prekliči",
   },
   analytics: {
     title: "Analitika",

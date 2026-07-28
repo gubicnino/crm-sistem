@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { listLeads } from "@/db/queries/leads";
 import { leadSourceEnum, pipelineStageEnum, type LeadSource, type PipelineStage } from "@/db/schema";
+import { CreateLeadDialog } from "@/components/leads/create-lead-dialog";
 import { LeadFilters } from "@/components/leads/lead-filters";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -32,7 +33,10 @@ export default async function LeadsPage({
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-semibold">{sl.leads.title}</h1>
-        <LeadFilters currentStage={stage} currentSource={source} />
+        <div className="flex items-center gap-2">
+          <LeadFilters currentStage={stage} currentSource={source} />
+          <CreateLeadDialog />
+        </div>
       </div>
 
       {leads.length === 0 ? (
