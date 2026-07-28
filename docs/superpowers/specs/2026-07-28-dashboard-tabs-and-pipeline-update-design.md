@@ -32,6 +32,26 @@ needed there. Changes required:
 - `lib/labels.ts` — remove the two `pipelineStageLabels` entries.
 - `scripts/seed-demo.ts` — audit and fix any references to the removed stages.
 
+### Make future stage edits low-friction for a developer
+
+Not a UI or schema-flexibility change — just removing duplication so the
+*next* stage add/rename/remove touches one place instead of several. A grep
+across the codebase today finds the "terminal stage" set (`client`/`lost`)
+hardcoded as `stage === "client" || stage === "lost"` independently in five
+places: `lib/cron/stuck-leads.ts`, `lib/cron/reconcile.ts`,
+`db/queries/analytics.ts` (twice), and `db/queries/leads.ts` (twice — the
+cancellation trigger in `setLeadStage` and the exclusion filter in
+`listLeadsMissingScheduledEmails`). Every one of these has to be found and
+updated by hand if the terminal-stage set ever changes.
+
+- `lib/pipeline.ts` — add a single exported source of truth, e.g.
+  `export const TERMINAL_STAGES: readonly PipelineStage[] = ["client", "lost"]`
+  plus `export function isTerminalStage(stage: PipelineStage): boolean`.
+- Replace all five hardcoded checks above with `isTerminalStage(...)`.
+- This is the only change in scope for "easy to edit later" right now — see
+  "Future direction" under Out of scope for the bigger, deliberately
+  deferred change.
+
 ## 2. Lead deduplication on form resubmission (email-only, cross-source merge)
 
 Decision from discussion: a repeat submission is matched **by email alone**,
@@ -123,3 +143,18 @@ each linking to `/leads/[id]` or expanding inline to show `AnswersView`. New
 - Analytics UI changes beyond what falls out automatically from the enum
   shrink (`db/queries/analytics.ts` is already generic over
   `pipelineStageEnum.enumValues`).
+
+### Future direction (explicitly deferred, not part of this plan)
+
+The user's longer-term intent is for pipeline stages to become **per-trainer
+configurable data**, the same way `trainers.applicationQuestions` already is
+today — each trainer defines and reorders their own stages in the UI instead
+of sharing one hardcoded enum. That is a large, separate migration: it turns
+`stage` from a Postgres enum into trainer-owned rows, requires an explicit
+per-trainer flag for which stage(s) mean "conversion" and "lost" (since
+cancellation and analytics currently key off the literal names `client`/
+`lost`, which won't exist as fixed strings anymore), and touches schema,
+cancellation logic, analytics, and the kanban board. Deliberately not
+attempted now — the "terminal stage" consolidation above is the only
+groundwork laid in this plan. Scope the trainer-configurable version as its
+own future spec when it's time to build it.
