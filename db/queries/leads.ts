@@ -3,6 +3,7 @@ import { db } from "@/db";
 import { leads, scheduledEmails, type Lead, type LeadSource, type PipelineStage } from "@/db/schema";
 import type { LeadAnswers } from "@/db/types";
 import { scoped, type TrainerScope } from "@/lib/tenant";
+import { isTerminalStage, TERMINAL_STAGES } from "@/lib/pipeline";
 
 export interface ListLeadsFilters {
   stage?: PipelineStage;
@@ -108,7 +109,7 @@ export async function setLeadStage(scope: TrainerScope, leadId: string, next: Pi
     throw new Error("Lead not found or not owned by this trainer.");
   }
 
-  if (next === "client" || next === "lost") {
+  if (isTerminalStage(next)) {
     // Dynamic import: avoids forcing every consumer of this file (including
     // plain reads like listLeads) to eagerly load lib/email/client.ts, which
     // throws at module-init time if RESEND_API_KEY is unset.
@@ -152,7 +153,7 @@ export async function listLeadsMissingScheduledEmails(sinceDays: number, limit: 
       and(
         gte(leads.createdAt, since),
         isNull(leads.unsubscribedAt),
-        notInArray(leads.stage, ["client", "lost"]),
+        notInArray(leads.stage, [...TERMINAL_STAGES]),
         notExists(db.select().from(scheduledEmails).where(eq(scheduledEmails.leadId, leads.id))),
       ),
     )

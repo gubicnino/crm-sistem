@@ -1,6 +1,6 @@
 import { db } from "@/db";
 import { leadSourceEnum, leads, pipelineStageEnum, type LeadSource, type PipelineStage } from "@/db/schema";
-import { isStuck } from "@/lib/pipeline";
+import { isStuck, isTerminalStage } from "@/lib/pipeline";
 import { ownedBy, type TrainerScope } from "@/lib/tenant";
 
 export interface AnalyticsSummary {
@@ -59,7 +59,7 @@ export async function getAnalyticsSummary(scope: TrainerScope): Promise<Analytic
     if (lead.createdAt.getTime() >= weekAgo) newThisWeek++;
     if (lead.stage === "client") clientCount++;
 
-    if (lead.stage !== "client" && lead.stage !== "lost") {
+    if (!isTerminalStage(lead.stage)) {
       const days = (now - lead.stageChangedAt.getTime()) / DAY_MS;
       daysInStage.push(days);
       if (isStuck(lead.stage, days)) stuckCount++;
