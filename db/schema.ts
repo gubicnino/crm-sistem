@@ -254,18 +254,14 @@ export const emailSequenceSteps = pgTable(
      *  sequences.ts asserted at module load. */
     dayOffset: integer("day_offset").notNull(),
     subject: text("subject").notNull(),
-    /** Phase 1 fields — superseded by `body` below (a heading is just an H2
-     *  node inside the rich-text doc now). Nullable-then-drop migration:
-     *  this commit adds `body` nullable, a backfill script converts every
-     *  existing row, then a follow-up migration drops these two columns and
-     *  makes `body` NOT NULL. Never write to these two after this commit. */
-    heading: text("heading"),
-    paragraphs: jsonb("paragraphs").$type<string[]>(),
     /** Tiptap-compatible rich-text document — see EmailDoc's doc in
      *  db/types.ts. lib/validation/email-doc.ts is the runtime security
-     *  boundary; lib/email/rich-text.tsx is the matching renderer. Nullable
-     *  only until the backfill migration below completes. */
-    body: jsonb("body").$type<EmailDoc>(),
+     *  boundary; lib/email/rich-text.tsx is the matching renderer. Replaces
+     *  Phase 1's `heading`/`paragraphs` columns (a heading is just an H2
+     *  node inside the doc now) — see scripts/backfill-email-doc-bodies.ts
+     *  for how every existing row was converted before this column went
+     *  NOT NULL. */
+    body: jsonb("body").$type<EmailDoc>().notNull(),
     ...timestamps,
   },
   (t) => [index("email_sequence_steps_sequence_id_position_idx").on(t.sequenceId, t.position)],

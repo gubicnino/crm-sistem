@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { DEFAULT_SEQUENCES } from "@/lib/email/default-sequences";
 import { MAX_SCHEDULE_DAYS } from "@/lib/email/constants";
+import { emailDocSchema } from "@/lib/validation/email-doc";
 
 describe("DEFAULT_SEQUENCES", () => {
   it("defines exactly one sequence per lead source", () => {
@@ -22,15 +23,12 @@ describe("DEFAULT_SEQUENCES", () => {
     }
   });
 
-  it("gives every step a non-empty subject, heading, and at least one paragraph", () => {
+  it("gives every step a non-empty subject and a body that passes emailDocSchema", () => {
     for (const sequence of DEFAULT_SEQUENCES) {
       for (const step of sequence.steps) {
         expect(step.subject.length).toBeGreaterThan(0);
-        expect(step.heading.length).toBeGreaterThan(0);
-        expect(step.paragraphs.length).toBeGreaterThan(0);
-        for (const paragraph of step.paragraphs) {
-          expect(paragraph.length).toBeGreaterThan(0);
-        }
+        const result = emailDocSchema.safeParse(step.body);
+        expect(result.success).toBe(true);
       }
     }
   });

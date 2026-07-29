@@ -1,10 +1,11 @@
 import type { LeadSource } from "@/db/schema";
+import type { EmailDocNode } from "@/db/types";
+import { headingAndParagraphsToDoc } from "@/lib/email/plain-text-to-doc";
 
 export interface DefaultSequenceStep {
   dayOffset: number;
   subject: string;
-  heading: string;
-  paragraphs: string[];
+  body: EmailDocNode;
 }
 
 export interface DefaultSequence {
@@ -13,17 +14,32 @@ export interface DefaultSequence {
   steps: DefaultSequenceStep[];
 }
 
+interface RawDefaultStep {
+  dayOffset: number;
+  subject: string;
+  heading: string;
+  paragraphs: string[];
+}
+
+interface RawDefaultSequence {
+  name: string;
+  triggerSource: LeadSource;
+  steps: RawDefaultStep[];
+}
+
 /**
  * Starter content every new trainer gets (see lib/email/seed-defaults.ts),
  * ported from the pre-Phase-1 hardcoded lib/email/sequences.ts +
- * lib/email/copy.ts (deleted in Task 7) — same two sequences, same steps,
- * same day offsets. `${ctx.trainerName}` interpolations become the literal
- * `{{trener}}` token (see lib/email/variables.ts); the old name-conditional
- * headings ("Hvala, Ana!" vs. "Hvala!") are flattened to a single
- * unconditional heading, since Phase 1's substitution has no branching —
- * the trainer is expected to edit this starter copy to fit their voice.
+ * lib/email/copy.ts — same two sequences, same steps, same day offsets.
+ * Authored in this plain heading+paragraphs shape for readability, then
+ * converted to a rich-text `body` (headingAndParagraphsToDoc) below —
+ * `${ctx.trainerName}` interpolations become the literal `{{trener}}`
+ * token, converted to a `variable` node by that same helper. The old
+ * name-conditional headings ("Hvala, Ana!" vs. "Hvala!") are flattened to a
+ * single unconditional heading, since substitution has no branching — the
+ * trainer is expected to edit this starter copy to fit their voice.
  */
-export const DEFAULT_SEQUENCES: DefaultSequence[] = [
+const RAW_DEFAULT_SEQUENCES: RawDefaultSequence[] = [
   {
     name: "Prijave",
     triggerSource: "application",
@@ -118,3 +134,13 @@ export const DEFAULT_SEQUENCES: DefaultSequence[] = [
     ],
   },
 ];
+
+export const DEFAULT_SEQUENCES: DefaultSequence[] = RAW_DEFAULT_SEQUENCES.map((sequence) => ({
+  name: sequence.name,
+  triggerSource: sequence.triggerSource,
+  steps: sequence.steps.map((step) => ({
+    dayOffset: step.dayOffset,
+    subject: step.subject,
+    body: headingAndParagraphsToDoc(step.heading, step.paragraphs),
+  })),
+}));
