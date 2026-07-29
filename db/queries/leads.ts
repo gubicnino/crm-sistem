@@ -1,4 +1,4 @@
-import { and, desc, eq, gte, isNull, notExists, notInArray, sql } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, isNull, notExists, notInArray, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { leads, scheduledEmails, type Lead, type LeadSource, type PipelineStage } from "@/db/schema";
 import type { LeadAnswers } from "@/db/types";
@@ -30,6 +30,19 @@ export async function getLead(scope: TrainerScope, leadId: string): Promise<Lead
     .where(scoped(leads, scope, eq(leads.id, leadId)))
     .limit(1);
   return lead ?? null;
+}
+
+/** Fetches a trainer's own leads by id, scoped — used by
+ *  lib/email/broadcast.ts to resolve the trainer's checkbox selection.
+ *  Scoping here (not just trusting the client-supplied id list) is the
+ *  whole point: a lead id belonging to another trainer is silently
+ *  dropped from the result, never fetched. */
+export async function listLeadsByIds(scope: TrainerScope, leadIds: string[]): Promise<Lead[]> {
+  if (leadIds.length === 0) return [];
+  return db
+    .select()
+    .from(leads)
+    .where(scoped(leads, scope, inArray(leads.id, leadIds)));
 }
 
 export interface CreateLeadFromIntakeInput {

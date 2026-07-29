@@ -10,6 +10,9 @@ export interface ReserveScheduledEmailInput {
   sequenceStep: string;
   /** Typed step link — see scheduledEmails.stepId's doc in db/schema.ts. */
   stepId: string | null;
+  /** Set only for kind: "broadcast" rows — see scheduledEmails.broadcastId's
+   *  doc in db/schema.ts. */
+  broadcastId?: string;
   kind: ScheduledEmailKind;
   scheduledFor: Date;
   /** Defaults to 1 (a lead's first enrollment in this step). Phase 4's
@@ -35,6 +38,7 @@ export async function reserveScheduledEmails(
     leadId: input.leadId,
     sequenceStep: input.sequenceStep,
     stepId: input.stepId,
+    broadcastId: input.broadcastId ?? null,
     kind: input.kind,
     scheduledFor: input.scheduledFor,
     attempt: input.attempt ?? 1,
