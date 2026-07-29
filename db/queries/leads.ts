@@ -138,16 +138,18 @@ export async function createLeadFromIntake(
     .where(scoped(leads, scope, eq(leads.email, input.email)))
     .returning();
 
-  if (updated && input.source === "application") {
+  if (updated && input.source === "application" && !isTerminalStage(updated.stage)) {
     // Phase 3: same sync/enroll pair as setLeadStage's non-terminal branch —
     // safe to call even when the CASE above left `stage` unchanged, since
     // both are idempotent: reserveScheduledEmails' unique index no-ops a
     // repeat enrollment, and sync just re-evaluates the (possibly-unchanged)
-    // current stage. Never a problem for a lead already at client/lost
-    // either — it was already fully canceled when it got there, and no
-    // sequence can ever have triggerStage set to a terminal stage in the
-    // first place (rejected in lib/validation/email-sequences.ts), so
-    // enrollLeadOnStageEntered finds nothing to enroll into.
+    // current stage. The isTerminalStage guard is explicit defense in depth,
+    // not strictly load-bearing today (a lead already at client/lost was
+    // already fully canceled when it got there, and no sequence can ever
+    // have triggerStage set to a terminal stage — rejected in
+    // lib/validation/email-sequences.ts) — but skipping the call outright
+    // means this property doesn't silently depend on those two other
+    // invariants never changing.
     const { syncScheduledEmailsForLeadStage } = await import("@/lib/email/cancel");
     await syncScheduledEmailsForLeadStage(scope, updated.id, updated.stage);
     const { enrollLeadOnStageEntered } = await import("@/lib/email/enroll");
