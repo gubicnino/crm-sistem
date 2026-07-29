@@ -38,10 +38,18 @@ export interface ApplyResult {
 
 /** Statuses where the prior row might still be a live, outstanding Resend
  *  schedule — anything in this set blocks re-reserving that step this run.
- *  `cancel_failed` is included deliberately: lib/email/cancel.ts's own
- *  doc explains that a cancel failure (including Resend's ambiguous
- *  `not_found`) does NOT reliably mean the email won't still be sent. */
-const UNRESOLVED_AFTER_CANCEL_STATUSES = new Set(["scheduled", "pending", "cancel_failed"]);
+ *  `cancel_failed` is included deliberately: lib/email/cancel.ts's own doc
+ *  explains that a cancel failure (including Resend's ambiguous
+ *  `not_found`) does NOT reliably mean the email won't still be sent.
+ *  `orphaned` is the same ambiguity by a different path: a `pending` row
+ *  aged past Resend's ~24h idempotency-key window is marked `orphaned` and
+ *  never retried (db/queries/scheduled-emails.ts's
+ *  markOrphanedPendingScheduledEmails) precisely because there's no way to
+ *  confirm whether Resend actually received and is holding that send — the
+ *  exact same "can't confirm it's dead" state as `cancel_failed`, just
+ *  reached without ever having a resendEmailId to attempt cancellation
+ *  against. */
+const UNRESOLVED_AFTER_CANCEL_STATUSES = new Set(["scheduled", "pending", "cancel_failed", "orphaned"]);
 
 /**
  * The trainer's "Uporabi za obstoječe stranke" action: re-enrolls every lead
@@ -62,7 +70,8 @@ const UNRESOLVED_AFTER_CANCEL_STATUSES = new Set(["scheduled", "pending", "cance
  * a lead's outstanding rows for this sequence, this function re-fetches
  * that lead's row history and only re-reserves a step whose prior row
  * actually resolved to `canceled` or `sent` — a step whose row is still
- * `scheduled`/`pending`/`cancel_failed` is skipped this run rather than
+ * `scheduled`/`pending`/`cancel_failed`/`orphaned` (see
+ * UNRESOLVED_AFTER_CANCEL_STATUSES) is skipped this run rather than
  * re-reserved, because reserving anyway could hand Resend a second live
  * schedule for the exact same logical step (CLAUDE.md: "the single most
  * damaging bug this system can produce").

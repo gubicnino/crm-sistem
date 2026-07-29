@@ -131,6 +131,25 @@ describe("applySequenceToExistingLeads", () => {
     expect(result.affectedLeads).toBe(0);
   });
 
+  it("blocks re-reservation of a step whose only prior row is orphaned", async () => {
+    const farFutureEnrollment = new Date(Date.now() + 100 * 24 * 60 * 60 * 1000);
+    listLeadsEnrolledInSequenceMock.mockResolvedValue([{ leadId: "lead-1", enrolledAt: farFutureEnrollment }]);
+    getLeadMock.mockResolvedValue({ id: "lead-1", name: "Ana", email: "ana@example.com", unsubscribedAt: null, stage: "contacted" });
+    // An orphaned row is never "cancelable" (it's not scheduled/pending), so
+    // there's only one fetch — but it must still block re-reservation, since
+    // an orphaned row's fate at Resend is exactly as unconfirmed as a
+    // cancel_failed one (see UNRESOLVED_AFTER_CANCEL_STATUSES's doc).
+    listScheduledEmailsForLeadInSequenceMock.mockResolvedValue([
+      { id: "se-old", sequenceStep: "step-1", attempt: 1, status: "orphaned" },
+    ]);
+
+    const result = await applySequenceToExistingLeads(scope, "seq-1");
+
+    expect(cancelScheduledEmailRowsMock).not.toHaveBeenCalled();
+    expect(reserveScheduledEmailsMock).not.toHaveBeenCalled();
+    expect(result.blockedByCancelFailure).toBe(1);
+  });
+
   it("computes the next attempt as 1 + the highest attempt this lead/step has ever used", async () => {
     const farFutureEnrollment = new Date(Date.now() + 100 * 24 * 60 * 60 * 1000);
     listLeadsEnrolledInSequenceMock.mockResolvedValue([{ leadId: "lead-1", enrolledAt: farFutureEnrollment }]);
