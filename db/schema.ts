@@ -281,6 +281,31 @@ export const emailSequenceSteps = pgTable(
   (t) => [index("email_sequence_steps_sequence_id_position_idx").on(t.sequenceId, t.position)],
 );
 
+/**
+ * A trainer's one-off manual send (Phase 5) — "Pošlji zdaj/razporedi" on a
+ * trainer-chosen set of leads, as opposed to a sequence's recurring,
+ * trigger-driven steps. Immutable once created: there is no edit path,
+ * only cancellation via the same scheduled_emails rows it produced (see
+ * scheduledEmails.broadcastId and lib/email/broadcast.ts).
+ */
+export const emailBroadcasts = pgTable("email_broadcasts", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  trainerId: uuid("trainer_id")
+    .notNull()
+    .references(() => trainers.id, { onDelete: "cascade" }),
+  subject: text("subject").notNull(),
+  /** Same EmailDoc shape and validation boundary as a sequence step's body
+   *  — see lib/validation/email-doc.ts and lib/email/rich-text.tsx. */
+  body: jsonb("body").$type<EmailDoc>().notNull(),
+  scheduledFor: timestamptz("scheduled_for").notNull(),
+  /** Snapshot of how many scheduled_emails rows this broadcast actually
+   *  produced (after excluding unsubscribed/terminal-stage leads) — shown
+   *  back to the trainer; not recomputed later, so it stays a record of
+   *  what was true at send time even if leads later unsubscribe. */
+  recipientCount: integer("recipient_count").notNull(),
+  createdAt: createdAt(),
+});
+
 export const scheduledEmails = pgTable(
   "scheduled_emails",
   {
@@ -305,6 +330,11 @@ export const scheduledEmails = pgTable(
      *  the step is later deleted — sequenceStep remains the permanent
      *  historical key regardless. */
     stepId: uuid("step_id").references(() => emailSequenceSteps.id, { onDelete: "set null" }),
+    /** Set only for kind: "broadcast" rows — the one-off send that produced
+     *  this row. Null for every "sequence" row. Set null (not cascaded) if
+     *  the broadcast record is ever deleted, same "history survives the
+     *  parent" rule as stepId above. */
+    broadcastId: uuid("broadcast_id").references(() => emailBroadcasts.id, { onDelete: "set null" }),
     /** Starts at 1. Phase 4 increments this when re-scheduling an
      *  already-enrolled lead after the trainer edits a sequence ("apply to
      *  existing leads"), so the same (leadId, sequenceStep) pair can be
@@ -410,6 +440,9 @@ export type NewNote = typeof notes.$inferInsert;
 
 export type ScheduledEmail = typeof scheduledEmails.$inferSelect;
 export type NewScheduledEmail = typeof scheduledEmails.$inferInsert;
+
+export type EmailBroadcast = typeof emailBroadcasts.$inferSelect;
+export type NewEmailBroadcast = typeof emailBroadcasts.$inferInsert;
 
 export type EmailSequence = typeof emailSequences.$inferSelect;
 export type NewEmailSequence = typeof emailSequences.$inferInsert;

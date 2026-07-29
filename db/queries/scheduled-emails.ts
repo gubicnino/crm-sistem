@@ -197,6 +197,7 @@ export async function listScheduledEmailsForTrainer(scope: TrainerScope): Promis
       kind: scheduledEmails.kind,
       sequenceStep: scheduledEmails.sequenceStep,
       stepId: scheduledEmails.stepId,
+      broadcastId: scheduledEmails.broadcastId,
       attempt: scheduledEmails.attempt,
       resendEmailId: scheduledEmails.resendEmailId,
       scheduledFor: scheduledEmails.scheduledFor,
