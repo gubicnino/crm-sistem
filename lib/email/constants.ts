@@ -21,3 +21,11 @@ export const RECONCILE_RETRY_MAX_HOURS = 20;
  *  scheduled-send code path, and a real (if brief) cancellation window even
  *  for the instant confirmation email. */
 export const IMMEDIATE_SEND_DELAY_SECONDS = 60;
+
+/** Product cap, not a technical one — keeps the sequence list scannable and
+ *  bounds how many Resend schedule calls one lead enrollment can fan out
+ *  into. Enforced in db/queries/email-sequences.ts's createEmailSequence. */
+export const MAX_SEQUENCES_PER_TRAINER = 5;
+
+/** Same rationale as MAX_SEQUENCES_PER_TRAINER, per sequence. */
+export const MAX_STEPS_PER_SEQUENCE = 15;
