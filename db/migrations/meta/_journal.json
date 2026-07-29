@@ -43,6 +43,13 @@
       "when": 1785306736094,
       "tag": "0005_calm_thing",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1785322316353,
+      "tag": "0006_flowery_millenium_guard",
+      "breakpoints": true
     }
   ]
 }
