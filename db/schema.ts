@@ -288,23 +288,36 @@ export const emailSequenceSteps = pgTable(
  * only cancellation via the same scheduled_emails rows it produced (see
  * scheduledEmails.broadcastId and lib/email/broadcast.ts).
  */
-export const emailBroadcasts = pgTable("email_broadcasts", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  trainerId: uuid("trainer_id")
-    .notNull()
-    .references(() => trainers.id, { onDelete: "cascade" }),
-  subject: text("subject").notNull(),
-  /** Same EmailDoc shape and validation boundary as a sequence step's body
-   *  — see lib/validation/email-doc.ts and lib/email/rich-text.tsx. */
-  body: jsonb("body").$type<EmailDoc>().notNull(),
-  scheduledFor: timestamptz("scheduled_for").notNull(),
-  /** Snapshot of how many scheduled_emails rows this broadcast actually
-   *  produced (after excluding unsubscribed/terminal-stage leads) — shown
-   *  back to the trainer; not recomputed later, so it stays a record of
-   *  what was true at send time even if leads later unsubscribe. */
-  recipientCount: integer("recipient_count").notNull(),
-  createdAt: createdAt(),
-});
+export const emailBroadcasts = pgTable(
+  "email_broadcasts",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    trainerId: uuid("trainer_id")
+      .notNull()
+      .references(() => trainers.id, { onDelete: "cascade" }),
+    /** Client-minted once per compose session (components/emails/broadcast-form.tsx
+     *  generates it on mount, not per submit attempt) so a double-click, a
+     *  second tab, or a network-layer retry of the same send resolves to
+     *  this SAME broadcast row instead of minting a second one — see
+     *  db/queries/email-broadcasts.ts's getOrCreateEmailBroadcast. Without
+     *  this, sequenceStep below would derive from a freshly-generated id on
+     *  every call and the scheduled_emails unique index could never catch
+     *  the duplicate (security-reviewer finding, Phase 5). */
+    clientRequestId: uuid("client_request_id").notNull(),
+    subject: text("subject").notNull(),
+    /** Same EmailDoc shape and validation boundary as a sequence step's body
+     *  — see lib/validation/email-doc.ts and lib/email/rich-text.tsx. */
+    body: jsonb("body").$type<EmailDoc>().notNull(),
+    scheduledFor: timestamptz("scheduled_for").notNull(),
+    /** Snapshot of how many scheduled_emails rows this broadcast actually
+     *  produced (after excluding unsubscribed/terminal-stage leads) — shown
+     *  back to the trainer; not recomputed later, so it stays a record of
+     *  what was true at send time even if leads later unsubscribe. */
+    recipientCount: integer("recipient_count").notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [uniqueIndex("email_broadcasts_trainer_id_client_request_id_unique").on(t.trainerId, t.clientRequestId)],
+);
 
 export const scheduledEmails = pgTable(
   "scheduled_emails",

@@ -1,4 +1,4 @@
-import { createEmailBroadcast } from "@/db/queries/email-broadcasts";
+import { getOrCreateEmailBroadcast } from "@/db/queries/email-broadcasts";
 import { listLeadsByIds } from "@/db/queries/leads";
 import { reserveScheduledEmails } from "@/db/queries/scheduled-emails";
 import { getTrainer } from "@/db/queries/trainers";
@@ -12,6 +12,10 @@ import type { TrainerScope } from "@/lib/tenant";
 import { unsubscribeLink } from "@/lib/unsubscribe";
 
 export interface SendBroadcastInput {
+  /** Client-minted idempotency key — see broadcastFormSchema's doc and
+   *  getOrCreateEmailBroadcast for why this (not a freshly-generated id)
+   *  is what sequenceStep below must derive from. */
+  clientRequestId: string;
   subject: string;
   body: EmailDoc;
   leadIds: string[];
@@ -34,10 +38,16 @@ export interface SendBroadcastResult {
  * The trainer's one-off manual send (Phase 5). Mirrors the reserve->send
  * protocol every other email path in this codebase uses (lib/email/schedule.ts),
  * with `kind: "broadcast"` and `sequenceStep: "broadcast:<broadcastId>"` so
- * the existing (leadId, sequenceStep, attempt) unique index still makes a
+ * the existing (leadId, sequenceStep, attempt) unique index makes a
  * re-submitted request idempotent per lead, and so the row is cancelable
  * through the exact same path as a sequence step (CLAUDE.md: "Cancellation
  * is mandatory").
+ *
+ * That per-lead index only helps if `broadcastId` itself is stable across a
+ * resubmission — getOrCreateEmailBroadcast resolves input.clientRequestId
+ * to the SAME broadcast row on a double-click/retry rather than minting a
+ * fresh one, which is what makes sequenceStep stable and lets the unique
+ * index actually catch the duplicate (security-reviewer finding, Phase 5).
  *
  * Hard-excludes unsubscribed and terminal-stage leads regardless of what
  * the trainer's checkbox selection contained — this can't be left to the
@@ -50,7 +60,8 @@ export async function sendBroadcast(scope: TrainerScope, input: SendBroadcastInp
 
   const scheduledFor = input.scheduledFor ?? new Date(Date.now() + IMMEDIATE_SEND_DELAY_SECONDS * 1000);
 
-  const broadcast = await createEmailBroadcast(scope, {
+  const broadcast = await getOrCreateEmailBroadcast(scope, {
+    clientRequestId: input.clientRequestId,
     subject: input.subject,
     body: input.body,
     scheduledFor,

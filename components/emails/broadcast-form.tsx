@@ -26,6 +26,11 @@ const EMPTY_BODY: EmailDocNode = { type: "doc", content: [{ type: "paragraph", c
  *  among what's already eligible. */
 export function BroadcastForm({ leads }: { leads: Lead[] }) {
   const router = useRouter();
+  // Minted once per compose session (not per submit attempt) — a
+  // double-click or a retried request carries the SAME id, so the server
+  // resolves it to one broadcast instead of sending twice. See
+  // lib/validation/broadcast.ts's clientRequestId doc.
+  const [clientRequestId] = useState(() => crypto.randomUUID());
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState<EmailDocNode>(EMPTY_BODY);
@@ -51,6 +56,7 @@ export function BroadcastForm({ leads }: { leads: Lead[] }) {
 
   function buildPayload() {
     return {
+      clientRequestId,
       subject,
       body,
       leadIds: [...selected],

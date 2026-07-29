@@ -14,8 +14,16 @@ import { emailDocSchema } from "@/lib/validation/email-doc";
  * uses, for the same reason: a real, if brief, cancellation window). A
  * non-null value must be within Resend's MAX_SCHEDULE_DAYS ceiling, same as
  * a sequence step's dayOffset.
+ *
+ * `clientRequestId` is minted once per compose session by the client (see
+ * components/emails/broadcast-form.tsx) and carried through unchanged on
+ * every submit attempt for that same compose session — it's the idempotency
+ * key db/queries/email-broadcasts.ts's getOrCreateEmailBroadcast uses to
+ * collapse a double-click/retry onto one broadcast row instead of sending
+ * twice (security-reviewer finding, Phase 5).
  */
 export const broadcastFormSchema = z.object({
+  clientRequestId: z.uuid(),
   subject: z.string().trim().min(1, { error: "Zadeva je obvezna." }).max(200),
   body: emailDocSchema,
   leadIds: z

@@ -1,0 +1,2 @@
+ALTER TABLE "email_broadcasts" ADD COLUMN "client_request_id" uuid NOT NULL;--> statement-breakpoint
+CREATE UNIQUE INDEX "email_broadcasts_trainer_id_client_request_id_unique" ON "email_broadcasts" USING btree ("trainer_id","client_request_id");

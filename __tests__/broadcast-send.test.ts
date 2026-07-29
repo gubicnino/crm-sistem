@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const createEmailBroadcastMock = vi.fn();
+const getOrCreateEmailBroadcastMock = vi.fn();
 vi.mock("@/db/queries/email-broadcasts", () => ({
-  createEmailBroadcast: (...args: unknown[]) => createEmailBroadcastMock(...args),
+  getOrCreateEmailBroadcast: (...args: unknown[]) => getOrCreateEmailBroadcastMock(...args),
 }));
 
 const listLeadsByIdsMock = vi.fn();
@@ -33,15 +33,16 @@ import { systemScope } from "@/lib/tenant";
 
 const scope = systemScope("11111111-1111-1111-1111-111111111111", "operator_cli");
 const body = { type: "doc" as const, content: [] };
+const clientRequestId = "22222222-2222-4222-8222-222222222222";
 
 beforeEach(() => {
-  createEmailBroadcastMock.mockReset();
+  getOrCreateEmailBroadcastMock.mockReset();
   listLeadsByIdsMock.mockReset();
   reserveScheduledEmailsMock.mockReset();
   getTrainerMock.mockReset();
   sendReservedStepMock.mockReset();
 
-  createEmailBroadcastMock.mockResolvedValue({ id: "bc-1" });
+  getOrCreateEmailBroadcastMock.mockResolvedValue({ id: "bc-1" });
   getTrainerMock.mockResolvedValue({ name: "Janez", fromEmail: null });
 });
 
@@ -56,6 +57,7 @@ describe("sendBroadcast", () => {
       .mockResolvedValueOnce([{ id: "se-2", leadId: "lead-2", scheduledFor: new Date() }]);
 
     const result = await sendBroadcast(scope, {
+      clientRequestId,
       subject: "Novica",
       body,
       leadIds: ["lead-1", "lead-2"],
@@ -71,7 +73,13 @@ describe("sendBroadcast", () => {
       { id: "lead-1", name: "Ana", email: "ana@example.com", unsubscribedAt: new Date(), stage: "contacted" },
     ]);
 
-    const result = await sendBroadcast(scope, { subject: "Novica", body, leadIds: ["lead-1"], scheduledFor: null });
+    const result = await sendBroadcast(scope, {
+      clientRequestId,
+      subject: "Novica",
+      body,
+      leadIds: ["lead-1"],
+      scheduledFor: null,
+    });
 
     expect(result).toEqual({ broadcastId: "bc-1", recipientCount: 0, skippedCount: 1 });
     expect(reserveScheduledEmailsMock).not.toHaveBeenCalled();
@@ -83,7 +91,13 @@ describe("sendBroadcast", () => {
       { id: "lead-1", name: "Ana", email: "ana@example.com", unsubscribedAt: null, stage: "client" },
     ]);
 
-    const result = await sendBroadcast(scope, { subject: "Novica", body, leadIds: ["lead-1"], scheduledFor: null });
+    const result = await sendBroadcast(scope, {
+      clientRequestId,
+      subject: "Novica",
+      body,
+      leadIds: ["lead-1"],
+      scheduledFor: null,
+    });
 
     expect(result.skippedCount).toBe(1);
     expect(reserveScheduledEmailsMock).not.toHaveBeenCalled();
@@ -92,31 +106,37 @@ describe("sendBroadcast", () => {
   it("counts a leadId that resolves to no row (wrong trainer or deleted) as skipped", async () => {
     listLeadsByIdsMock.mockResolvedValue([]); // scoped lookup found nothing
 
-    const result = await sendBroadcast(scope, { subject: "Novica", body, leadIds: ["not-mine"], scheduledFor: null });
+    const result = await sendBroadcast(scope, {
+      clientRequestId,
+      subject: "Novica",
+      body,
+      leadIds: ["not-mine"],
+      scheduledFor: null,
+    });
 
     expect(result).toEqual({ broadcastId: "bc-1", recipientCount: 0, skippedCount: 1 });
   });
 
-  it("passes the eligible count as recipientCount when creating the broadcast row", async () => {
+  it("passes the eligible count and clientRequestId when creating the broadcast row", async () => {
     listLeadsByIdsMock.mockResolvedValue([
       { id: "lead-1", name: "Ana", email: "ana@example.com", unsubscribedAt: null, stage: "contacted" },
     ]);
     reserveScheduledEmailsMock.mockResolvedValue([{ id: "se-1", leadId: "lead-1", scheduledFor: new Date() }]);
 
-    await sendBroadcast(scope, { subject: "Novica", body, leadIds: ["lead-1"], scheduledFor: null });
+    await sendBroadcast(scope, { clientRequestId, subject: "Novica", body, leadIds: ["lead-1"], scheduledFor: null });
 
-    expect(createEmailBroadcastMock).toHaveBeenCalledWith(
+    expect(getOrCreateEmailBroadcastMock).toHaveBeenCalledWith(
       scope,
-      expect.objectContaining({ subject: "Novica", recipientCount: 1 }),
+      expect.objectContaining({ clientRequestId, subject: "Novica", recipientCount: 1 }),
     );
   });
 
   it("defaults scheduledFor to roughly now when null (send now)", async () => {
     listLeadsByIdsMock.mockResolvedValue([]);
 
-    await sendBroadcast(scope, { subject: "Novica", body, leadIds: [], scheduledFor: null });
+    await sendBroadcast(scope, { clientRequestId, subject: "Novica", body, leadIds: [], scheduledFor: null });
 
-    const passedScheduledFor = createEmailBroadcastMock.mock.calls[0][1].scheduledFor as Date;
+    const passedScheduledFor = getOrCreateEmailBroadcastMock.mock.calls[0][1].scheduledFor as Date;
     expect(passedScheduledFor.getTime()).toBeGreaterThan(Date.now() - 1000);
     expect(passedScheduledFor.getTime()).toBeLessThan(Date.now() + 5 * 60 * 1000);
   });
@@ -127,7 +147,7 @@ describe("sendBroadcast", () => {
     ]);
     reserveScheduledEmailsMock.mockResolvedValue([{ id: "se-1", leadId: "lead-1", scheduledFor: new Date() }]);
 
-    await sendBroadcast(scope, { subject: "Novica", body, leadIds: ["lead-1"], scheduledFor: null });
+    await sendBroadcast(scope, { clientRequestId, subject: "Novica", body, leadIds: ["lead-1"], scheduledFor: null });
 
     const reserveArg = reserveScheduledEmailsMock.mock.calls[0][1][0];
     expect(reserveArg).toMatchObject({
@@ -145,9 +165,54 @@ describe("sendBroadcast", () => {
     ]);
     reserveScheduledEmailsMock.mockResolvedValue([]);
 
-    const result = await sendBroadcast(scope, { subject: "Novica", body, leadIds: ["lead-1"], scheduledFor: null });
+    const result = await sendBroadcast(scope, {
+      clientRequestId,
+      subject: "Novica",
+      body,
+      leadIds: ["lead-1"],
+      scheduledFor: null,
+    });
 
     expect(sendReservedStepMock).not.toHaveBeenCalled();
     expect(result.recipientCount).toBe(0);
+  });
+
+  it("a resubmission with the same clientRequestId resolves to the same broadcastId, so the per-lead unique index actually dedupes it", async () => {
+    // getOrCreateEmailBroadcast (mocked at the boundary here, exercised for
+    // real in db/queries/email-broadcasts.ts's own tests) returns the SAME
+    // row both times — the realistic outcome of a genuine double-click,
+    // since both calls carry the same clientRequestId.
+    getOrCreateEmailBroadcastMock.mockResolvedValue({ id: "bc-shared" });
+    listLeadsByIdsMock.mockResolvedValue([
+      { id: "lead-1", name: "Ana", email: "ana@example.com", unsubscribedAt: null, stage: "contacted" },
+    ]);
+    // First call reserves successfully; the retry's reservation collides on
+    // (leadId, sequenceStep, attempt) and onConflictDoNothing returns [].
+    reserveScheduledEmailsMock
+      .mockResolvedValueOnce([{ id: "se-1", leadId: "lead-1", scheduledFor: new Date() }])
+      .mockResolvedValueOnce([]);
+
+    const first = await sendBroadcast(scope, {
+      clientRequestId,
+      subject: "Novica",
+      body,
+      leadIds: ["lead-1"],
+      scheduledFor: null,
+    });
+    const retry = await sendBroadcast(scope, {
+      clientRequestId,
+      subject: "Novica",
+      body,
+      leadIds: ["lead-1"],
+      scheduledFor: null,
+    });
+
+    expect(first.broadcastId).toBe(retry.broadcastId);
+    const firstReserveArg = reserveScheduledEmailsMock.mock.calls[0][1][0];
+    const retryReserveArg = reserveScheduledEmailsMock.mock.calls[1][1][0];
+    expect(firstReserveArg.sequenceStep).toBe(retryReserveArg.sequenceStep);
+    expect(first.recipientCount).toBe(1);
+    expect(retry.recipientCount).toBe(0); // the duplicate reservation was blocked
+    expect(sendReservedStepMock).toHaveBeenCalledTimes(1); // never sent twice
   });
 });
