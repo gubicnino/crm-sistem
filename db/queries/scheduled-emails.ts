@@ -1,21 +1,26 @@
 import { and, count, desc, eq, gt, inArray, lt } from "drizzle-orm";
 import { db } from "@/db";
 import { leads, scheduledEmails, type NewScheduledEmail, type ScheduledEmail } from "@/db/schema";
-import type { ScheduledEmailStatus } from "@/db/types";
+import type { ScheduledEmailKind, ScheduledEmailStatus } from "@/db/types";
 import { RECONCILE_RETRY_MAX_HOURS, RECONCILE_RETRY_MIN_MINUTES } from "@/lib/email/constants";
 import { scoped, type TrainerScope } from "@/lib/tenant";
 
 export interface ReserveScheduledEmailInput {
   leadId: string;
   sequenceStep: string;
+  /** Typed step link — see scheduledEmails.stepId's doc in db/schema.ts. */
+  stepId: string | null;
+  kind: ScheduledEmailKind;
   scheduledFor: Date;
 }
 
 /**
  * Reserve step of the scheduling protocol — see lib/email/schedule.ts.
- * onConflictDoNothing on (leadId, sequenceStep) makes this idempotent: only
- * rows that did not already exist are returned, so a caller (including the
- * Phase 6 reconciler) can call this blindly and safely.
+ * onConflictDoNothing on (leadId, sequenceStep, attempt) makes this
+ * idempotent: only rows that did not already exist are returned, so a
+ * caller (including the cron reconciler) can call this blindly and safely.
+ * `attempt` is never passed here — it defaults to 1 at the DB level; Phase 4
+ * is what re-enrolls with attempt > 1.
  */
 export async function reserveScheduledEmails(
   scope: TrainerScope,
@@ -26,13 +31,17 @@ export async function reserveScheduledEmails(
     trainerId: scope.trainerId,
     leadId: input.leadId,
     sequenceStep: input.sequenceStep,
+    stepId: input.stepId,
+    kind: input.kind,
     scheduledFor: input.scheduledFor,
     status: "pending",
   }));
   return db
     .insert(scheduledEmails)
     .values(values)
-    .onConflictDoNothing({ target: [scheduledEmails.leadId, scheduledEmails.sequenceStep] })
+    .onConflictDoNothing({
+      target: [scheduledEmails.leadId, scheduledEmails.sequenceStep, scheduledEmails.attempt],
+    })
     .returning();
 }
 
