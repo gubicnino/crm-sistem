@@ -144,6 +144,26 @@ export const sl = {
     applyLimitExceeded: "Preveč vključenih strank naenkrat. Obrnite se na podporo.",
     applyBlockedByCancelFailure: (n: number) =>
       `${n} ${n === 1 ? "korak ni bil posodobljen" : "korakov ni bilo posodobljenih"}, ker preklic prejšnjega e-sporočila ni uspel. Poskusite znova čez nekaj minut.`,
+    sendManual: "Pošlji ročno e-sporočilo",
+    sendTitle: "Ročno e-sporočilo",
+    sendBackToEmails: "Nazaj na emaile",
+    sendRecipientsTitle: "Prejemniki",
+    sendRecipientsEmpty: "Ni strank, ki bi ustrezale izbranim filtrom.",
+    sendSelectAll: "Izberi vse",
+    sendDeselectAll: "Počisti izbor",
+    sendSelectedCount: (n: number) => `Izbranih: ${n}`,
+    sendSubjectLabel: "Zadeva",
+    sendBodyLabel: "Besedilo e-sporočila",
+    sendScheduleLabel: "Kdaj poslati",
+    sendScheduleNow: "Takoj",
+    sendScheduleLater: "Razporedi",
+    sendConfirmButton: "Pošlji",
+    sendConfirmTitle: "Pošlji e-sporočilo?",
+    sendConfirmBody: (n: number) => `Sporočilo bo poslano ${n} izbranim strankam.`,
+    sendSuccess: (n: number, skipped: number) =>
+      skipped > 0
+        ? `E-sporočilo je bilo poslano ${n} strankam. Preskočenih: ${skipped} (odjavljene ali že pridobljene/izgubljene stranke).`
+        : `E-sporočilo je bilo poslano ${n} strankam.`,
   },
   analytics: {
     title: "Analitika",

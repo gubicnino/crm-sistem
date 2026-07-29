@@ -16,9 +16,14 @@ export default async function EmailsPage() {
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-semibold">{sl.emails.title}</h1>
-        <Button variant="outline" size="sm" render={<Link href="/emails/sequences" />}>
-          {sl.emails.manageSequences}
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" render={<Link href="/emails/send" />}>
+            {sl.emails.sendManual}
+          </Button>
+          <Button variant="outline" size="sm" render={<Link href="/emails/sequences" />}>
+            {sl.emails.manageSequences}
+          </Button>
+        </div>
       </div>
       {emails.length === 0 ? (
         <p className="text-muted-foreground">{sl.emails.empty}</p>
