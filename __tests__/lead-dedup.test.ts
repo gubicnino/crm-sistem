@@ -20,6 +20,16 @@ vi.mock("@/db", () => ({
   },
 }));
 
+const syncScheduledEmailsForLeadStageMock = vi.fn();
+vi.mock("@/lib/email/cancel", () => ({
+  syncScheduledEmailsForLeadStage: (...args: unknown[]) => syncScheduledEmailsForLeadStageMock(...args),
+}));
+
+const enrollLeadOnStageEnteredMock = vi.fn();
+vi.mock("@/lib/email/enroll", () => ({
+  enrollLeadOnStageEntered: (...args: unknown[]) => enrollLeadOnStageEnteredMock(...args),
+}));
+
 import { createLeadFromIntake } from "@/db/queries/leads";
 import { systemScope } from "@/lib/tenant";
 
@@ -30,6 +40,8 @@ beforeEach(() => {
   updateReturningMock.mockReset();
   onConflictDoNothingMock.mockClear();
   setMock.mockClear();
+  syncScheduledEmailsForLeadStageMock.mockReset();
+  enrollLeadOnStageEnteredMock.mockReset();
 });
 
 describe("createLeadFromIntake", () => {
@@ -80,7 +92,7 @@ describe("createLeadFromIntake", () => {
 
   it("on a conflicting application submission, also merges source and answers", async () => {
     insertReturningMock.mockResolvedValue([]);
-    updateReturningMock.mockResolvedValue([{ id: "lead-3", email: "c@example.com" }]);
+    updateReturningMock.mockResolvedValue([{ id: "lead-3", email: "c@example.com", stage: "application_received" }]);
 
     await createLeadFromIntake(scope, {
       name: "Ana",
@@ -101,6 +113,26 @@ describe("createLeadFromIntake", () => {
     expect(setArg.stage).toBeDefined();
   });
 
+  it("on a conflicting application submission, syncs and enrolls for the resulting stage (Phase 3)", async () => {
+    insertReturningMock.mockResolvedValue([]);
+    updateReturningMock.mockResolvedValue([{ id: "lead-3", email: "c@example.com", stage: "application_received" }]);
+
+    await createLeadFromIntake(scope, {
+      name: "Ana",
+      email: "c@example.com",
+      source: "application",
+      stage: "application_received",
+      answers: { goal: "Shujšati" },
+    });
+
+    expect(syncScheduledEmailsForLeadStageMock).toHaveBeenCalledWith(scope, "lead-3", "application_received");
+    expect(enrollLeadOnStageEnteredMock).toHaveBeenCalledWith(
+      scope,
+      { id: "lead-3", email: "c@example.com", stage: "application_received" },
+      "application_received",
+    );
+  });
+
   it("on a conflicting lead_magnet submission, never includes source, answers, or stage in the update", async () => {
     insertReturningMock.mockResolvedValue([]);
     updateReturningMock.mockResolvedValue([{ id: "lead-4", email: "d@example.com" }]);
@@ -115,5 +147,19 @@ describe("createLeadFromIntake", () => {
     expect(setArg).not.toHaveProperty("source");
     expect(setArg).not.toHaveProperty("answers");
     expect(setArg).not.toHaveProperty("stage");
+  });
+
+  it("on a conflicting lead_magnet submission, never syncs or enrolls (stage never changes on this branch)", async () => {
+    insertReturningMock.mockResolvedValue([]);
+    updateReturningMock.mockResolvedValue([{ id: "lead-4", email: "d@example.com" }]);
+
+    await createLeadFromIntake(scope, {
+      email: "d@example.com",
+      source: "lead_magnet",
+      stage: "email_lead",
+    });
+
+    expect(syncScheduledEmailsForLeadStageMock).not.toHaveBeenCalled();
+    expect(enrollLeadOnStageEnteredMock).not.toHaveBeenCalled();
   });
 });

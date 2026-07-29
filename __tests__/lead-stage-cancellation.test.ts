@@ -14,8 +14,15 @@ vi.mock("@/db", () => ({
 }));
 
 const cancelSequenceForLeadMock = vi.fn();
+const syncScheduledEmailsForLeadStageMock = vi.fn();
 vi.mock("@/lib/email/cancel", () => ({
   cancelSequenceForLead: (...args: unknown[]) => cancelSequenceForLeadMock(...args),
+  syncScheduledEmailsForLeadStage: (...args: unknown[]) => syncScheduledEmailsForLeadStageMock(...args),
+}));
+
+const enrollLeadOnStageEnteredMock = vi.fn();
+vi.mock("@/lib/email/enroll", () => ({
+  enrollLeadOnStageEntered: (...args: unknown[]) => enrollLeadOnStageEnteredMock(...args),
 }));
 
 import { setLeadStage } from "@/db/queries/leads";
@@ -26,6 +33,8 @@ const scope = systemScope("11111111-1111-1111-1111-111111111111", "cron_daily");
 beforeEach(() => {
   returningMock.mockReset();
   cancelSequenceForLeadMock.mockReset();
+  syncScheduledEmailsForLeadStageMock.mockReset();
+  enrollLeadOnStageEnteredMock.mockReset();
 });
 
 describe("setLeadStage", () => {
@@ -45,12 +54,14 @@ describe("setLeadStage", () => {
     expect(cancelSequenceForLeadMock).toHaveBeenCalledWith(scope, "lead-1");
   });
 
-  it("does not trigger cancellation for a non-terminal stage change", async () => {
+  it("does not trigger cancellation for a non-terminal stage change, but does sync/enroll (Phase 3)", async () => {
     returningMock.mockResolvedValue([{ id: "lead-1", stage: "contacted" }]);
 
     await setLeadStage(scope, "lead-1", "contacted");
 
     expect(cancelSequenceForLeadMock).not.toHaveBeenCalled();
+    expect(syncScheduledEmailsForLeadStageMock).toHaveBeenCalledWith(scope, "lead-1", "contacted");
+    expect(enrollLeadOnStageEnteredMock).toHaveBeenCalledWith(scope, { id: "lead-1", stage: "contacted" }, "contacted");
   });
 
   it("throws if the lead is not found or not owned by this trainer", async () => {

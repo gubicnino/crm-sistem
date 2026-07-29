@@ -138,6 +138,22 @@ export async function createLeadFromIntake(
     .where(scoped(leads, scope, eq(leads.email, input.email)))
     .returning();
 
+  if (updated && input.source === "application") {
+    // Phase 3: same sync/enroll pair as setLeadStage's non-terminal branch —
+    // safe to call even when the CASE above left `stage` unchanged, since
+    // both are idempotent: reserveScheduledEmails' unique index no-ops a
+    // repeat enrollment, and sync just re-evaluates the (possibly-unchanged)
+    // current stage. Never a problem for a lead already at client/lost
+    // either — it was already fully canceled when it got there, and no
+    // sequence can ever have triggerStage set to a terminal stage in the
+    // first place (rejected in lib/validation/email-sequences.ts), so
+    // enrollLeadOnStageEntered finds nothing to enroll into.
+    const { syncScheduledEmailsForLeadStage } = await import("@/lib/email/cancel");
+    await syncScheduledEmailsForLeadStage(scope, updated.id, updated.stage);
+    const { enrollLeadOnStageEntered } = await import("@/lib/email/enroll");
+    await enrollLeadOnStageEntered(scope, updated, updated.stage);
+  }
+
   return { lead: updated, isNew: false };
 }
 
@@ -148,12 +164,23 @@ export async function createLeadFromIntake(
  * Cancellation on `client`/`lost` lives HERE, not in the caller, specifically
  * so it cannot be forgotten by a new UI call site.
  *
+ * Phase 3: every NON-terminal transition also (a) re-evaluates already-
+ * scheduled steps whose sendOnlyIfStage condition may now exclude the new
+ * stage (syncScheduledEmailsForLeadStage — cancellation is the entire
+ * enforcement mechanism for that condition, see lib/email/cancel.ts) and
+ * (b) enrolls the lead into any sequence whose trigger is exactly "entered
+ * this stage" (enrollLeadOnStageEntered). Both are skipped on a terminal
+ * transition — cancelSequenceForLead below already cancels everything
+ * unconditionally, and a stage_entered trigger can never target client/lost
+ * in the first place (rejected in lib/validation/email-sequences.ts).
+ *
  * The one other place `stage` is written is createLeadFromIntake's own
  * conflict-path CASE expression above, for the dedup-driven `email_lead` ->
  * `application_received` auto-advance — that path can never reach a
  * terminal stage (its CASE only ever targets `application_received`), so it
- * has no cancellation obligation and deliberately doesn't call this
- * function. eslint.config.mjs's no-restricted-syntax rule exempts this
+ * has no cancellation obligation, but it does call the same Phase 3
+ * sync/enroll pair as this function's non-terminal branch (see its own
+ * comment). eslint.config.mjs's no-restricted-syntax rule exempts this
  * whole file rather than special-casing either function.
  */
 export async function setLeadStage(scope: TrainerScope, leadId: string, next: PipelineStage): Promise<Lead> {
@@ -167,12 +194,17 @@ export async function setLeadStage(scope: TrainerScope, leadId: string, next: Pi
     throw new Error("Lead not found or not owned by this trainer.");
   }
 
+  // Dynamic imports throughout: avoids forcing every consumer of this file
+  // (including plain reads like listLeads) to eagerly load lib/email/client.ts,
+  // which throws at module-init time if RESEND_API_KEY is unset.
   if (isTerminalStage(next)) {
-    // Dynamic import: avoids forcing every consumer of this file (including
-    // plain reads like listLeads) to eagerly load lib/email/client.ts, which
-    // throws at module-init time if RESEND_API_KEY is unset.
     const { cancelSequenceForLead } = await import("@/lib/email/cancel");
     await cancelSequenceForLead(scope, leadId);
+  } else {
+    const { syncScheduledEmailsForLeadStage } = await import("@/lib/email/cancel");
+    await syncScheduledEmailsForLeadStage(scope, leadId, next);
+    const { enrollLeadOnStageEntered } = await import("@/lib/email/enroll");
+    await enrollLeadOnStageEntered(scope, updated, next);
   }
 
   return updated;
