@@ -355,3 +355,62 @@ export async function listConditionalScheduledStepsForLead(
     );
   return rows.filter((row): row is ConditionalScheduledStep => row.sendOnlyIfStage !== null);
 }
+
+export interface EnrolledLead {
+  leadId: string;
+  /** The earliest scheduled_emails.createdAt among this lead's rows for this
+   *  sequence — the anchor lib/email/reapply.ts's applySequenceToExistingLeads
+   *  re-derives each step's new scheduledFor from (enrolledAt + dayOffset),
+   *  not from "now". Computed in JS, not a SQL MIN aggregate — this file
+   *  otherwise avoids raw SQL aggregates, and a lead's own row count here is
+   *  small (at most one row per step of one sequence). */
+  enrolledAt: Date;
+}
+
+/**
+ * Every distinct lead who has at least one scheduled_emails row for one of
+ * this sequence's steps, with each lead's earliest such row's createdAt as
+ * `enrolledAt`. Powers both the "Uporabi za obstoječe stranke" confirmation
+ * count and the re-enrollment loop itself (lib/email/reapply.ts).
+ */
+export async function listLeadsEnrolledInSequence(scope: TrainerScope, sequenceId: string): Promise<EnrolledLead[]> {
+  const stepRows = await db
+    .select({ id: emailSequenceSteps.id })
+    .from(emailSequenceSteps)
+    .where(scoped(emailSequenceSteps, scope, eq(emailSequenceSteps.sequenceId, sequenceId)));
+  const stepIds = stepRows.map((s) => s.id);
+  if (stepIds.length === 0) return [];
+
+  const rows = await db
+    .select({ leadId: scheduledEmails.leadId, createdAt: scheduledEmails.createdAt })
+    .from(scheduledEmails)
+    .where(scoped(scheduledEmails, scope, inArray(scheduledEmails.stepId, stepIds)));
+
+  const enrolledAtByLead = new Map<string, Date>();
+  for (const row of rows) {
+    const existing = enrolledAtByLead.get(row.leadId);
+    if (!existing || row.createdAt < existing) {
+      enrolledAtByLead.set(row.leadId, row.createdAt);
+    }
+  }
+  return [...enrolledAtByLead.entries()].map(([leadId, enrolledAt]) => ({ leadId, enrolledAt }));
+}
+
+/**
+ * Every scheduled_emails row (any status/attempt) for this lead matching any
+ * of the given step ids — the full history lib/email/reapply.ts needs to
+ * (a) find which rows are still cancelable and (b) compute each step's next
+ * attempt number (1 + the highest attempt this lead/step pair has ever used,
+ * across all statuses — a sent row's attempt still counts).
+ */
+export async function listScheduledEmailsForLeadInSequence(
+  scope: TrainerScope,
+  leadId: string,
+  stepIds: string[],
+): Promise<ScheduledEmail[]> {
+  if (stepIds.length === 0) return [];
+  return db
+    .select()
+    .from(scheduledEmails)
+    .where(scoped(scheduledEmails, scope, eq(scheduledEmails.leadId, leadId), inArray(scheduledEmails.stepId, stepIds)));
+}
