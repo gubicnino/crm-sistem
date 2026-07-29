@@ -38,3 +38,9 @@ export const MAX_STEPS_PER_SEQUENCE = 15;
  * to ask, not have their re-enrollment quietly do less than they asked for.
  */
 export const MAX_APPLY_TO_EXISTING_LEADS_PER_RUN = 200;
+
+/** Phase 5's one-off manual send. Same reasoning as the other caps in this
+ *  file: bounds how many Resend calls one trainer action can fan out into,
+ *  and a trainer who genuinely needs more needs to ask, not have the send
+ *  silently do less than requested. */
+export const MAX_BROADCAST_RECIPIENTS = 500;
