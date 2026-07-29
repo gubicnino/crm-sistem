@@ -3,7 +3,8 @@ import {
   listRetryablePendingScheduledEmails,
   markOrphanedPendingScheduledEmails,
 } from "@/db/queries/scheduled-emails";
-import { retryPendingScheduledEmail, scheduleSequenceForLead } from "@/lib/email/schedule";
+import { enrollLeadOnCreate } from "@/lib/email/enroll";
+import { retryPendingScheduledEmail } from "@/lib/email/schedule";
 import { MAX_RECONCILE_LEADS_PER_RUN, MAX_RECONCILE_SENDS_PER_RUN } from "@/lib/cron/limits";
 import { systemScope } from "@/lib/tenant";
 import { isTerminalStage } from "@/lib/pipeline";
@@ -21,7 +22,7 @@ const RECONCILE_LOOKBACK_DAYS = 7;
 /**
  * Two independent jobs, both safe to call blindly thanks to Phase 4's design:
  *  - leads with zero scheduled_emails rows (e.g. Resend/DB was down at
- *    creation time) get scheduleSequenceForLead() — a no-op if rows already
+ *    creation time) get enrollLeadOnCreate() — a no-op if rows already
  *    exist, via the (leadId, sequenceStep) unique index.
  *  - `pending` rows aged into the safe retry window get retried with the
  *    same idempotency key; older rows are marked `orphaned` and never
@@ -48,7 +49,7 @@ export async function reconcile(): Promise<ReconcileStats> {
   } else {
     for (const lead of missingLeads) {
       const scope = systemScope(lead.trainerId, "cron_daily");
-      await scheduleSequenceForLead(scope, lead);
+      await enrollLeadOnCreate(scope, lead);
       stats.reconciledLeads++;
     }
   }

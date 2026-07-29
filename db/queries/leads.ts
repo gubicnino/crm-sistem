@@ -198,7 +198,7 @@ export async function markLeadUnsubscribed(scope: TrainerScope, leadId: string):
 /**
  * Cross-tenant by necessity: the cron reconciler (Phase 6) scans for leads
  * created in the last `sinceDays` with zero scheduled_emails rows — e.g.
- * Resend/the DB was down at creation time, so scheduleSequenceForLead's
+ * Resend/the DB was down at creation time, so enrollLeadOnCreate's
  * reserve step never ran. Excludes unsubscribed leads and terminal stages,
  * which must never get a sequence (re-)started.
  */

@@ -2,7 +2,7 @@ import { createLeadFromIntake } from "@/db/queries/leads";
 import { getTrainerBySiteKey } from "@/db/queries/trainers";
 import type { PipelineStage } from "@/db/schema";
 import { corsHeaders, preflight } from "@/lib/cors";
-import { scheduleSequenceForLead } from "@/lib/email/schedule";
+import { enrollLeadOnCreate } from "@/lib/email/enroll";
 import { logLeadIntake, logLeadIntakeError } from "@/lib/log";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { getClientIp } from "@/lib/request-ip";
@@ -98,12 +98,12 @@ export async function POST(request: Request) {
 
     if (isNew) {
       // Never let an email failure fail this request — the lead is already
-      // saved. scheduleSequenceForLead itself never throws (see its internals);
+      // saved. enrollLeadOnCreate itself never throws (see its internals);
       // this catch is defense in depth against something unexpected upstream.
       try {
-        await scheduleSequenceForLead(scope, lead);
+        await enrollLeadOnCreate(scope, lead);
       } catch (err) {
-        logLeadIntakeError("scheduleSequenceForLead", err);
+        logLeadIntakeError("enrollLeadOnCreate", err);
       }
     }
 
