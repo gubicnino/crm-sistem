@@ -52,7 +52,13 @@ describe("emailSequenceStepSchema", () => {
 });
 
 describe("emailSequenceFormSchema", () => {
-  const validForm = { name: "Prijave", triggerSource: "application" as const, enabled: true, steps: [validStep] };
+  const validForm = {
+    name: "Prijave",
+    triggerType: "lead_created" as const,
+    triggerSource: "application" as const,
+    enabled: true,
+    steps: [validStep],
+  };
 
   it("accepts a well-formed sequence", () => {
     expect(emailSequenceFormSchema.safeParse(validForm).success).toBe(true);
