@@ -11,8 +11,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
+import { RichTextEditor } from "@/components/emails/rich-text-editor";
 import type { EmailSequence, EmailSequenceStep, LeadSource } from "@/db/schema";
+import type { EmailDocNode } from "@/db/types";
 import { createEmailSequenceAction, updateEmailSequenceAction } from "@/lib/actions/email-sequences";
 import { MAX_SCHEDULE_DAYS, MAX_STEPS_PER_SEQUENCE } from "@/lib/email/constants";
 import { leadSourceLabels } from "@/lib/labels";
@@ -22,8 +23,7 @@ import { emailSequenceFormSchema } from "@/lib/validation/email-sequences";
 interface StepFormValues {
   id?: string;
   subject: string;
-  heading: string;
-  paragraphsText: string;
+  body: EmailDocNode;
   dayOffset: number;
 }
 
@@ -34,11 +34,23 @@ interface SequenceFormValues {
   steps: StepFormValues[];
 }
 
+/**
+ * `body` here is a light shape check (typed against the general
+ * EmailDocNode, not the Zod-inferred narrow literal type emailDocSchema
+ * produces) — just enough for react-hook-form's own client-side error
+ * display. The real security boundary is emailDocSchema's full recursive
+ * validation, applied to the transformed payload in onSubmit below and
+ * authoritatively again server-side in the Server Action; using the real
+ * schema here would fight RichTextEditor's onChange, which is typed to
+ * emit an EmailDocNode (Tiptap's own getJSON() is untyped by nature).
+ */
 const stepFormSchema = z.object({
   id: z.uuid().optional(),
   subject: z.string().trim().min(1, { error: "Zadeva je obvezna." }).max(200),
-  heading: z.string().trim().min(1, { error: "Naslov je obvezen." }).max(200),
-  paragraphsText: z.string().trim().min(1, { error: "Dodajte vsaj en odstavek besedila." }),
+  body: z.custom<EmailDocNode>(
+    (value) => typeof value === "object" && value !== null && (value as EmailDocNode).type === "doc",
+    { error: "Dodajte vsaj en odstavek besedila." },
+  ),
   dayOffset: z
     .number()
     .int()
@@ -53,18 +65,8 @@ const sequenceFormSchema = z.object({
   steps: z.array(stepFormSchema).min(1, { error: "Sekvenca potrebuje vsaj en korak." }).max(MAX_STEPS_PER_SEQUENCE),
 });
 
-function paragraphsToText(paragraphs: string[]): string {
-  return paragraphs.join("\n\n");
-}
-
-function textToParagraphs(text: string): string[] {
-  return text
-    .split(/\n\s*\n/)
-    .map((paragraph) => paragraph.trim())
-    .filter(Boolean);
-}
-
-const EMPTY_STEP: StepFormValues = { subject: "", heading: "", paragraphsText: "", dayOffset: 0 };
+const EMPTY_BODY: EmailDocNode = { type: "doc", content: [{ type: "paragraph", content: [] }] };
+const EMPTY_STEP: StepFormValues = { subject: "", body: EMPTY_BODY, dayOffset: 0 };
 
 export function SequenceForm({ sequence, steps }: { sequence?: EmailSequence; steps?: EmailSequenceStep[] }) {
   const router = useRouter();
@@ -86,8 +88,7 @@ export function SequenceForm({ sequence, steps }: { sequence?: EmailSequence; st
           ? steps.map((step) => ({
               id: step.id,
               subject: step.subject,
-              heading: step.heading,
-              paragraphsText: paragraphsToText(step.paragraphs),
+              body: step.body,
               dayOffset: step.dayOffset,
             }))
           : [EMPTY_STEP],
@@ -107,15 +108,13 @@ export function SequenceForm({ sequence, steps }: { sequence?: EmailSequence; st
       steps: values.steps.map((step) => ({
         id: step.id,
         subject: step.subject,
-        heading: step.heading,
-        paragraphs: textToParagraphs(step.paragraphsText),
+        body: step.body,
         dayOffset: step.dayOffset,
       })),
     };
 
-    // Re-validates the transformed payload (paragraphsText -> paragraphs[])
-    // against the same schema the server action re-validates — catches a
-    // paragraph split producing zero paragraphs before the round trip.
+    // Re-validates against the same schema the server action re-validates —
+    // catches an invalid body (e.g. an empty document) before the round trip.
     const parsed = emailSequenceFormSchema.safeParse(payload);
     if (!parsed.success) {
       setIsSaving(false);
@@ -201,17 +200,15 @@ export function SequenceForm({ sequence, steps }: { sequence?: EmailSequence; st
                 </div>
               </div>
               <div className="flex flex-col gap-1">
-                <Label>{sl.emails.stepHeadingLabel}</Label>
-                <Input {...register(`steps.${index}.heading`)} />
-                {rowErrors?.heading && <p className="text-xs text-destructive">{rowErrors.heading.message}</p>}
-              </div>
-              <div className="flex flex-col gap-1">
                 <Label>{sl.emails.stepBodyLabel}</Label>
-                <p className="text-xs text-muted-foreground">{sl.emails.stepBodyHint}</p>
-                <Textarea rows={6} {...register(`steps.${index}.paragraphsText`)} />
-                {rowErrors?.paragraphsText && (
-                  <p className="text-xs text-destructive">{rowErrors.paragraphsText.message}</p>
-                )}
+                <Controller
+                  control={control}
+                  name={`steps.${index}.body`}
+                  render={({ field: bodyField }) => (
+                    <RichTextEditor value={bodyField.value} onChange={bodyField.onChange} />
+                  )}
+                />
+                {rowErrors?.body && <p className="text-xs text-destructive">{sl.errors.validation}</p>}
               </div>
               <div className="flex justify-between">
                 <div className="flex gap-2">
