@@ -12,27 +12,37 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RichTextEditor } from "@/components/emails/rich-text-editor";
-import type { EmailSequence, EmailSequenceStep, LeadSource } from "@/db/schema";
+import type { EmailSequence, EmailSequenceStep, LeadSource, PipelineStage } from "@/db/schema";
 import type { EmailDocNode } from "@/db/types";
 import { createEmailSequenceAction, updateEmailSequenceAction } from "@/lib/actions/email-sequences";
 import { MAX_SCHEDULE_DAYS, MAX_STEPS_PER_SEQUENCE } from "@/lib/email/constants";
-import { leadSourceLabels } from "@/lib/labels";
+import { leadSourceLabels, pipelineStageLabels } from "@/lib/labels";
+import { isTerminalStage, PIPELINE_STAGES } from "@/lib/pipeline";
 import { sl } from "@/lib/strings";
 import { emailSequenceFormSchema } from "@/lib/validation/email-sequences";
+
+/** Only these can ever be a sequence's triggerStage or a step's
+ *  sendOnlyIfStage — client/lost are excluded here for the same reason the
+ *  server rejects them (lib/validation/email-sequences.ts): both already
+ *  have a mandatory, competing action on that transition (cancellation). */
+const NON_TERMINAL_STAGES = PIPELINE_STAGES.filter((stage) => !isTerminalStage(stage));
 
 interface StepFormValues {
   id?: string;
   subject: string;
   body: EmailDocNode;
   dayOffset: number;
+  sendOnlyIfStage: PipelineStage[];
 }
 
-interface SequenceFormValues {
+type SequenceFormValues = {
   name: string;
-  triggerSource: LeadSource | "any";
   enabled: boolean;
   steps: StepFormValues[];
-}
+} & (
+  | { triggerType: "lead_created"; triggerSource: LeadSource | "any" }
+  | { triggerType: "stage_entered"; triggerStage: PipelineStage }
+);
 
 /**
  * `body` here is a light shape check (typed against the general
@@ -56,60 +66,91 @@ const stepFormSchema = z.object({
     .int()
     .min(0, { error: "Dan mora biti 0 ali več." })
     .max(MAX_SCHEDULE_DAYS, { error: `Dan ne sme biti večji od ${MAX_SCHEDULE_DAYS}.` }),
+  sendOnlyIfStage: z.array(z.enum(PIPELINE_STAGES)),
 });
 
-const sequenceFormSchema = z.object({
-  name: z.string().trim().min(1, { error: "Ime sekvence je obvezno." }).max(100),
-  triggerSource: z.enum(["application", "lead_magnet", "any"]),
-  enabled: z.boolean(),
-  steps: z.array(stepFormSchema).min(1, { error: "Sekvenca potrebuje vsaj en korak." }).max(MAX_STEPS_PER_SEQUENCE),
-});
+const sequenceFormSchema = z.discriminatedUnion("triggerType", [
+  z.object({
+    triggerType: z.literal("lead_created"),
+    triggerSource: z.enum(["application", "lead_magnet", "any"]),
+    name: z.string().trim().min(1, { error: "Ime sekvence je obvezno." }).max(100),
+    enabled: z.boolean(),
+    steps: z.array(stepFormSchema).min(1, { error: "Sekvenca potrebuje vsaj en korak." }).max(MAX_STEPS_PER_SEQUENCE),
+  }),
+  z.object({
+    triggerType: z.literal("stage_entered"),
+    triggerStage: z.enum(NON_TERMINAL_STAGES),
+    name: z.string().trim().min(1, { error: "Ime sekvence je obvezno." }).max(100),
+    enabled: z.boolean(),
+    steps: z.array(stepFormSchema).min(1, { error: "Sekvenca potrebuje vsaj en korak." }).max(MAX_STEPS_PER_SEQUENCE),
+  }),
+]);
 
 const EMPTY_BODY: EmailDocNode = { type: "doc", content: [{ type: "paragraph", content: [] }] };
-const EMPTY_STEP: StepFormValues = { subject: "", body: EMPTY_BODY, dayOffset: 0 };
+const EMPTY_STEP: StepFormValues = { subject: "", body: EMPTY_BODY, dayOffset: 0, sendOnlyIfStage: [] };
 
 export function SequenceForm({ sequence, steps }: { sequence?: EmailSequence; steps?: EmailSequenceStep[] }) {
   const router = useRouter();
   const [isSaving, setIsSaving] = useState(false);
 
+  const defaultStepValues: StepFormValues[] =
+    steps && steps.length > 0
+      ? steps.map((step) => ({
+          id: step.id,
+          subject: step.subject,
+          body: step.body,
+          dayOffset: step.dayOffset,
+          sendOnlyIfStage: step.sendOnlyIfStage ?? [],
+        }))
+      : [EMPTY_STEP];
+
+  const defaultValues: SequenceFormValues =
+    sequence?.triggerType === "stage_entered"
+      ? {
+          triggerType: "stage_entered",
+          triggerStage: sequence.triggerStage ?? "contacted",
+          name: sequence.name,
+          enabled: sequence.enabled,
+          steps: defaultStepValues,
+        }
+      : {
+          triggerType: "lead_created",
+          triggerSource: sequence?.triggerSource ?? "any",
+          name: sequence?.name ?? "",
+          enabled: sequence?.enabled ?? true,
+          steps: defaultStepValues,
+        };
+
   const {
     control,
     register,
     handleSubmit,
+    watch,
     formState: { errors },
   } = useForm<SequenceFormValues>({
     resolver: zodResolver(sequenceFormSchema),
-    defaultValues: {
-      name: sequence?.name ?? "",
-      triggerSource: sequence?.triggerSource ?? "any",
-      enabled: sequence?.enabled ?? true,
-      steps:
-        steps && steps.length > 0
-          ? steps.map((step) => ({
-              id: step.id,
-              subject: step.subject,
-              body: step.body,
-              dayOffset: step.dayOffset,
-            }))
-          : [EMPTY_STEP],
-    },
+    defaultValues,
   });
 
   // keyName avoids react-hook-form silently overwriting a step's own `id`
   // (a real email_sequence_steps.id) with its internal row key.
   const { fields, append, remove, move } = useFieldArray({ control, name: "steps", keyName: "_rowKey" });
+  const triggerType = watch("triggerType");
 
   async function onSubmit(values: SequenceFormValues) {
     setIsSaving(true);
     const payload = {
       name: values.name,
-      triggerSource: values.triggerSource === "any" ? null : values.triggerSource,
       enabled: values.enabled,
+      ...(values.triggerType === "lead_created"
+        ? { triggerType: "lead_created" as const, triggerSource: values.triggerSource === "any" ? null : values.triggerSource }
+        : { triggerType: "stage_entered" as const, triggerStage: values.triggerStage }),
       steps: values.steps.map((step) => ({
         id: step.id,
         subject: step.subject,
         body: step.body,
         dayOffset: step.dayOffset,
+        sendOnlyIfStage: step.sendOnlyIfStage.length > 0 ? step.sendOnlyIfStage : null,
       })),
     };
 
@@ -149,24 +190,66 @@ export function SequenceForm({ sequence, steps }: { sequence?: EmailSequence; st
             {errors.name && <p className="text-xs text-destructive">{errors.name.message}</p>}
           </div>
           <div className="flex flex-col gap-1">
-            <Label>{sl.emails.sequenceTriggerLabel}</Label>
+            <Label>{sl.emails.sequenceTriggerTypeLabel}</Label>
             <Controller
               control={control}
-              name="triggerSource"
+              name="triggerType"
               render={({ field }) => (
                 <Select value={field.value} onValueChange={field.onChange}>
                   <SelectTrigger size="sm">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="any">{sl.emails.sequenceTriggerAnySource}</SelectItem>
-                    <SelectItem value="application">{leadSourceLabels.application}</SelectItem>
-                    <SelectItem value="lead_magnet">{leadSourceLabels.lead_magnet}</SelectItem>
+                    <SelectItem value="lead_created">{sl.emails.sequenceTriggerTypeLeadCreated}</SelectItem>
+                    <SelectItem value="stage_entered">{sl.emails.sequenceTriggerTypeStageEntered}</SelectItem>
                   </SelectContent>
                 </Select>
               )}
             />
           </div>
+          {triggerType === "lead_created" ? (
+            <div className="flex flex-col gap-1">
+              <Label>{sl.emails.sequenceTriggerLabel}</Label>
+              <Controller
+                control={control}
+                name="triggerSource"
+                render={({ field }) => (
+                  <Select value={field.value as string} onValueChange={field.onChange}>
+                    <SelectTrigger size="sm">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="any">{sl.emails.sequenceTriggerAnySource}</SelectItem>
+                      <SelectItem value="application">{leadSourceLabels.application}</SelectItem>
+                      <SelectItem value="lead_magnet">{leadSourceLabels.lead_magnet}</SelectItem>
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+            </div>
+          ) : (
+            <div className="flex flex-col gap-1">
+              <Label>{sl.emails.sequenceTriggerStageLabel}</Label>
+              <Controller
+                control={control}
+                name="triggerStage"
+                render={({ field }) => (
+                  <Select value={field.value as string} onValueChange={field.onChange}>
+                    <SelectTrigger size="sm">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {NON_TERMINAL_STAGES.map((stage) => (
+                        <SelectItem key={stage} value={stage}>
+                          {pipelineStageLabels[stage]}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+            </div>
+          )}
           <div className="flex items-center gap-2">
             <input type="checkbox" {...register("enabled")} className="size-4" />
             <Label>{sl.emails.sequenceEnabledLabel}</Label>
@@ -209,6 +292,38 @@ export function SequenceForm({ sequence, steps }: { sequence?: EmailSequence; st
                   )}
                 />
                 {rowErrors?.body && <p className="text-xs text-destructive">{sl.errors.validation}</p>}
+              </div>
+              <div className="flex flex-col gap-1">
+                <Label>{sl.emails.stepConditionLabel}</Label>
+                <p className="text-xs text-muted-foreground">{sl.emails.stepConditionHint}</p>
+                <Controller
+                  control={control}
+                  name={`steps.${index}.sendOnlyIfStage`}
+                  render={({ field: conditionField }) => (
+                    <div className="flex flex-wrap gap-3">
+                      {NON_TERMINAL_STAGES.map((stage) => {
+                        const checked = conditionField.value.includes(stage);
+                        return (
+                          <label key={stage} className="flex items-center gap-1.5 text-sm">
+                            <input
+                              type="checkbox"
+                              className="size-4"
+                              checked={checked}
+                              onChange={(e) => {
+                                conditionField.onChange(
+                                  e.target.checked
+                                    ? [...conditionField.value, stage]
+                                    : conditionField.value.filter((s) => s !== stage),
+                                );
+                              }}
+                            />
+                            {pipelineStageLabels[stage]}
+                          </label>
+                        );
+                      })}
+                    </div>
+                  )}
+                />
               </div>
               <div className="flex justify-between">
                 <div className="flex gap-2">
