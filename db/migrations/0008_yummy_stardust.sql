@@ -1,0 +1,1 @@
+ALTER TABLE "email_sequence_steps" ADD COLUMN "send_only_if_stage" jsonb;

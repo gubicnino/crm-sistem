@@ -262,6 +262,20 @@ export const emailSequenceSteps = pgTable(
      *  for how every existing row was converted before this column went
      *  NOT NULL. */
     body: jsonb("body").$type<EmailDoc>().notNull(),
+    /** Phase 3 per-step condition: null = send regardless of the lead's
+     *  current stage (Phase 1/2 behavior, unchanged). Non-null = this step
+     *  only sends while the lead's stage is one of these — enforced NOT at
+     *  send time (Resend already has the request; there is no send-time
+     *  hook) but via cancellation: lib/email/cancel.ts's
+     *  syncScheduledEmailsForLeadStage cancels any not-yet-sent step whose
+     *  condition excludes the lead's new stage, every time the lead's stage
+     *  changes. See CLAUDE.md's architecture note on why this is a
+     *  cancellation problem, not a scheduling one. Terminal stages
+     *  (client/lost) are deliberately never *includable* here — a step
+     *  conditioned on client/lost would compete with the mandatory
+     *  cancel-on-terminal already firing on the same transition; enforced
+     *  in lib/validation/email-sequences.ts. */
+    sendOnlyIfStage: jsonb("send_only_if_stage").$type<PipelineStage[]>(),
     ...timestamps,
   },
   (t) => [index("email_sequence_steps_sequence_id_position_idx").on(t.sequenceId, t.position)],

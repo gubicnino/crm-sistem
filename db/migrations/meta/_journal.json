@@ -57,6 +57,13 @@
       "when": 1785322729236,
       "tag": "0007_famous_gateway",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1785337375577,
+      "tag": "0008_yummy_stardust",
+      "breakpoints": true
     }
   ]
 }
