@@ -4,7 +4,7 @@ import {
   updateScheduledEmail,
   updateScheduledEmailIfStatus,
 } from "@/db/queries/scheduled-emails";
-import type { ScheduledEmail } from "@/db/schema";
+import type { PipelineStage, ScheduledEmail } from "@/db/schema";
 import { resend } from "@/lib/email/client";
 import type { TrainerScope } from "@/lib/tenant";
 
@@ -97,6 +97,44 @@ export async function cancelAllSequencesForTrainer(scope: TrainerScope): Promise
   const result: CancelSequenceResult = { canceled: 0, alreadySent: 0, failed: 0 };
   for (const row of rows) {
     await cancelRow(row, result);
+  }
+  return result;
+}
+
+/**
+ * Re-evaluates every not-yet-sent scheduled_emails row for this lead whose
+ * step carries a Phase 3 sendOnlyIfStage condition, canceling any whose
+ * condition no longer includes the lead's new stage. This is the *entire*
+ * enforcement mechanism for sendOnlyIfStage — Resend already has the send
+ * request by the time a condition could apply, so there is no send-time
+ * hook to gate on; the condition is enforced by canceling the send instead.
+ * See db/schema.ts's doc on emailSequenceSteps.sendOnlyIfStage.
+ *
+ * Deliberately one-directional: a lead moving OUT of a matching stage
+ * cancels the steps that needed it; a lead moving back INTO that stage
+ * never re-schedules an already-canceled step. Call from every NON-terminal
+ * stage change (db/queries/leads.ts's setLeadStage and
+ * createLeadFromIntake's dedup-driven advance) — terminal transitions
+ * already go through cancelSequenceForLead, which cancels unconditionally
+ * and makes this redundant for that case.
+ *
+ * Dynamic import, same reasoning as db/queries/leads.ts's setLeadStage: a
+ * plain top-level import of db/queries/email-sequences.ts (which imports
+ * "@/db") would force every consumer of this whole file — including tests
+ * exercising only cancelSequenceForLead — to eagerly load the db client.
+ */
+export async function syncScheduledEmailsForLeadStage(
+  scope: TrainerScope,
+  leadId: string,
+  stage: PipelineStage,
+): Promise<CancelSequenceResult> {
+  const { listConditionalScheduledStepsForLead } = await import("@/db/queries/email-sequences");
+  const conditional = await listConditionalScheduledStepsForLead(scope, leadId);
+  const result: CancelSequenceResult = { canceled: 0, alreadySent: 0, failed: 0 };
+  for (const { scheduledEmail, sendOnlyIfStage } of conditional) {
+    if (!sendOnlyIfStage.includes(stage)) {
+      await cancelRow(scheduledEmail, result);
+    }
   }
   return result;
 }

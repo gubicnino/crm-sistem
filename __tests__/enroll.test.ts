@@ -5,8 +5,11 @@ const reserveScheduledEmailsMock = vi.fn();
 const getTrainerMock = vi.fn();
 const sendReservedStepMock = vi.fn();
 
+const listEnabledSequencesForStageMock = vi.fn();
+
 vi.mock("@/db/queries/email-sequences", () => ({
   listEnabledSequencesForLeadCreated: (...args: unknown[]) => listEnabledSequencesMock(...args),
+  listEnabledSequencesForStageEntered: (...args: unknown[]) => listEnabledSequencesForStageMock(...args),
 }));
 vi.mock("@/db/queries/scheduled-emails", () => ({
   reserveScheduledEmails: (...args: unknown[]) => reserveScheduledEmailsMock(...args),
@@ -20,7 +23,7 @@ vi.mock("@/lib/email/schedule", () => ({
 vi.mock("@/lib/email/client", () => ({ FROM_EMAIL: "Default <default@example.com>" }));
 vi.mock("@/lib/unsubscribe", () => ({ unsubscribeLink: (leadId: string) => `https://example.com/u/${leadId}` }));
 
-import { enrollLeadOnCreate } from "@/lib/email/enroll";
+import { enrollLeadOnCreate, enrollLeadOnStageEntered } from "@/lib/email/enroll";
 import { systemScope } from "@/lib/tenant";
 
 const scope = systemScope("11111111-1111-1111-1111-111111111111", "site_key_ingest");
@@ -37,6 +40,7 @@ const baseLead = {
 
 beforeEach(() => {
   listEnabledSequencesMock.mockReset();
+  listEnabledSequencesForStageMock.mockReset();
   reserveScheduledEmailsMock.mockReset();
   getTrainerMock.mockReset();
   sendReservedStepMock.mockReset();
@@ -90,5 +94,37 @@ describe("enrollLeadOnCreate", () => {
     await enrollLeadOnCreate(scope, baseLead as never);
 
     expect(sendReservedStepMock).not.toHaveBeenCalled();
+  });
+});
+
+describe("enrollLeadOnStageEntered", () => {
+  it("does nothing when the lead is unsubscribed", async () => {
+    await enrollLeadOnStageEntered(scope, { ...baseLead, unsubscribedAt: new Date() } as never, "contacted");
+    expect(listEnabledSequencesForStageMock).not.toHaveBeenCalled();
+  });
+
+  it("does nothing when no stage_entered sequence matches", async () => {
+    listEnabledSequencesForStageMock.mockResolvedValue([]);
+    await enrollLeadOnStageEntered(scope, baseLead as never, "contacted");
+    expect(reserveScheduledEmailsMock).not.toHaveBeenCalled();
+  });
+
+  it("reserves and sends every step of a matching stage-triggered sequence", async () => {
+    const step = { id: "step-1", subject: "S", body: { type: "doc", content: [] }, dayOffset: 0 };
+    listEnabledSequencesForStageMock.mockResolvedValue([{ sequence: { id: "seq-1" }, steps: [step] }]);
+    reserveScheduledEmailsMock.mockResolvedValue([
+      { id: "se-1", leadId: "lead-1", sequenceStep: "step-1", scheduledFor: new Date() },
+    ]);
+
+    await enrollLeadOnStageEntered(scope, baseLead as never, "contacted");
+
+    expect(listEnabledSequencesForStageMock).toHaveBeenCalledWith(scope, "contacted");
+    expect(sendReservedStepMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("never calls the lead_created lookup", async () => {
+    listEnabledSequencesForStageMock.mockResolvedValue([]);
+    await enrollLeadOnStageEntered(scope, baseLead as never, "contacted");
+    expect(listEnabledSequencesMock).not.toHaveBeenCalled();
   });
 });
