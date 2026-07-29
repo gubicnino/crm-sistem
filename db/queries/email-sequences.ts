@@ -1,7 +1,14 @@
 import { asc, count, desc, eq, inArray, isNull, or } from "drizzle-orm";
 import { db } from "@/db";
-import { emailSequences, emailSequenceSteps, type EmailSequence, type EmailSequenceStep } from "@/db/schema";
-import type { LeadSource } from "@/db/schema";
+import {
+  emailSequences,
+  emailSequenceSteps,
+  scheduledEmails,
+  type EmailSequence,
+  type EmailSequenceStep,
+  type ScheduledEmail,
+} from "@/db/schema";
+import type { LeadSource, PipelineStage } from "@/db/schema";
 import type { EmailDocNode } from "@/db/types";
 import { MAX_SEQUENCES_PER_TRAINER } from "@/lib/email/constants";
 import { ownedBy, scoped, type TrainerScope } from "@/lib/tenant";
@@ -22,14 +29,18 @@ export interface EmailSequenceStepData {
   subject: string;
   body: EmailDocNode;
   dayOffset: number;
+  /** Phase 3 — null/undefined = unconditional. See db/schema.ts's doc on
+   *  scheduledEmails... no, on emailSequenceSteps.sendOnlyIfStage. */
+  sendOnlyIfStage?: PipelineStage[] | null;
 }
 
-export interface EmailSequenceData {
-  name: string;
-  triggerSource: LeadSource | null;
-  enabled: boolean;
-  steps: EmailSequenceStepData[];
-}
+/** Mirrors emailSequenceFormSchema's discriminated union (Phase 3) — a
+ *  sequence enrolls a lead either on creation (optionally filtered by
+ *  source) or on entering a specific non-terminal stage. */
+export type EmailSequenceData = { name: string; enabled: boolean; steps: EmailSequenceStepData[] } & (
+  | { triggerType: "lead_created"; triggerSource: LeadSource | null }
+  | { triggerType: "stage_entered"; triggerStage: PipelineStage }
+);
 
 export class SequenceLimitExceededError extends Error {
   constructor() {
@@ -106,8 +117,9 @@ export async function createEmailSequence(
     .values({
       trainerId: scope.trainerId,
       name: input.name,
-      triggerType: "lead_created",
-      triggerSource: input.triggerSource,
+      triggerType: input.triggerType,
+      triggerSource: input.triggerType === "lead_created" ? input.triggerSource : null,
+      triggerStage: input.triggerType === "stage_entered" ? input.triggerStage : null,
       enabled: input.enabled,
     })
     .returning();
@@ -120,6 +132,7 @@ export async function createEmailSequence(
       dayOffset: step.dayOffset,
       subject: step.subject,
       body: step.body,
+      sendOnlyIfStage: step.sendOnlyIfStage ?? null,
     })),
   );
 
@@ -143,7 +156,13 @@ export async function updateEmailSequence(
 ): Promise<EmailSequence | null> {
   const [updatedSequence] = await db
     .update(emailSequences)
-    .set({ name: input.name, triggerSource: input.triggerSource, enabled: input.enabled })
+    .set({
+      name: input.name,
+      triggerType: input.triggerType,
+      triggerSource: input.triggerType === "lead_created" ? input.triggerSource : null,
+      triggerStage: input.triggerType === "stage_entered" ? input.triggerStage : null,
+      enabled: input.enabled,
+    })
     .where(scoped(emailSequences, scope, eq(emailSequences.id, sequenceId)))
     .returning();
   if (!updatedSequence) return null;
@@ -171,6 +190,7 @@ export async function updateEmailSequence(
           dayOffset: step.dayOffset,
           subject: step.subject,
           body: step.body,
+          sendOnlyIfStage: step.sendOnlyIfStage ?? null,
         })
         .where(scoped(emailSequenceSteps, scope, eq(emailSequenceSteps.id, step.id)));
     } else {
@@ -181,6 +201,7 @@ export async function updateEmailSequence(
         dayOffset: step.dayOffset,
         subject: step.subject,
         body: step.body,
+        sendOnlyIfStage: step.sendOnlyIfStage ?? null,
       });
     }
   }
@@ -203,29 +224,11 @@ export async function setEmailSequenceEnabled(
   return rows.length > 0;
 }
 
-/**
- * Every enabled, lead_created-triggered sequence that matches this lead's
- * source (or targets any source) — what lib/email/enroll.ts's
- * enrollLeadOnCreate fans out over. A trainer can have more than one
- * matching sequence (e.g. one scoped to "application" and one with
- * triggerSource null); both get enrolled.
- */
-export async function listEnabledSequencesForLeadCreated(
-  scope: TrainerScope,
-  source: LeadSource,
-): Promise<EmailSequenceWithSteps[]> {
-  const sequences = await db
-    .select()
-    .from(emailSequences)
-    .where(
-      scoped(
-        emailSequences,
-        scope,
-        eq(emailSequences.enabled, true),
-        eq(emailSequences.triggerType, "lead_created"),
-        or(isNull(emailSequences.triggerSource), eq(emailSequences.triggerSource, source)),
-      ),
-    );
+/** Shared by listEnabledSequencesForLeadCreated and
+ *  listEnabledSequencesForStageEntered — both narrow `emailSequences` down
+ *  to a matching set first, then need the same "fetch and group steps by
+ *  sequence" tail. */
+async function attachSteps(scope: TrainerScope, sequences: EmailSequence[]): Promise<EmailSequenceWithSteps[]> {
   if (sequences.length === 0) return [];
 
   const steps = await db
@@ -253,6 +256,58 @@ export async function listEnabledSequencesForLeadCreated(
   return sequences.map((sequence) => ({ sequence, steps: stepsBySequence.get(sequence.id) ?? [] }));
 }
 
+/**
+ * Every enabled, lead_created-triggered sequence that matches this lead's
+ * source (or targets any source) — what lib/email/enroll.ts's
+ * enrollLeadOnCreate fans out over. A trainer can have more than one
+ * matching sequence (e.g. one scoped to "application" and one with
+ * triggerSource null); both get enrolled.
+ */
+export async function listEnabledSequencesForLeadCreated(
+  scope: TrainerScope,
+  source: LeadSource,
+): Promise<EmailSequenceWithSteps[]> {
+  const sequences = await db
+    .select()
+    .from(emailSequences)
+    .where(
+      scoped(
+        emailSequences,
+        scope,
+        eq(emailSequences.enabled, true),
+        eq(emailSequences.triggerType, "lead_created"),
+        or(isNull(emailSequences.triggerSource), eq(emailSequences.triggerSource, source)),
+      ),
+    );
+  return attachSteps(scope, sequences);
+}
+
+/**
+ * Every enabled, stage_entered-triggered sequence whose triggerStage
+ * matches — what lib/email/enroll.ts's enrollLeadOnStageEntered fans out
+ * over. Never matches a terminal stage: emailSequenceFormSchema rejects
+ * `triggerStage: "client" | "lost"` at write time, so this is a defense in
+ * depth, not the enforcement boundary.
+ */
+export async function listEnabledSequencesForStageEntered(
+  scope: TrainerScope,
+  stage: PipelineStage,
+): Promise<EmailSequenceWithSteps[]> {
+  const sequences = await db
+    .select()
+    .from(emailSequences)
+    .where(
+      scoped(
+        emailSequences,
+        scope,
+        eq(emailSequences.enabled, true),
+        eq(emailSequences.triggerType, "stage_entered"),
+        eq(emailSequences.triggerStage, stage),
+      ),
+    );
+  return attachSteps(scope, sequences);
+}
+
 /** Scoped lookup used by lib/email/schedule.ts's retryPendingScheduledEmail
  *  — a pending row only knows its stepId, not which trainer's scope minted
  *  it, so the caller must already hold the right scope before calling this. */
@@ -266,4 +321,37 @@ export async function getEmailSequenceStepForSend(
     .where(scoped(emailSequenceSteps, scope, eq(emailSequenceSteps.id, stepId)))
     .limit(1);
   return step ?? null;
+}
+
+export interface ConditionalScheduledStep {
+  scheduledEmail: ScheduledEmail;
+  sendOnlyIfStage: PipelineStage[];
+}
+
+/**
+ * Every non-terminal (scheduled/pending) scheduled_emails row for this lead
+ * whose step carries a sendOnlyIfStage condition — what lib/email/cancel.ts's
+ * syncScheduledEmailsForLeadStage re-evaluates on every stage change. Joins
+ * to email_sequence_steps for the condition itself; a row with no stepId
+ * (legacy, or a step since deleted) can't have a condition to check and is
+ * excluded, along with any step whose sendOnlyIfStage is null (unconditional
+ * — nothing to re-evaluate).
+ */
+export async function listConditionalScheduledStepsForLead(
+  scope: TrainerScope,
+  leadId: string,
+): Promise<ConditionalScheduledStep[]> {
+  const rows = await db
+    .select({ scheduledEmail: scheduledEmails, sendOnlyIfStage: emailSequenceSteps.sendOnlyIfStage })
+    .from(scheduledEmails)
+    .innerJoin(emailSequenceSteps, eq(scheduledEmails.stepId, emailSequenceSteps.id))
+    .where(
+      scoped(
+        scheduledEmails,
+        scope,
+        eq(scheduledEmails.leadId, leadId),
+        inArray(scheduledEmails.status, ["scheduled", "pending"]),
+      ),
+    );
+  return rows.filter((row): row is ConditionalScheduledStep => row.sendOnlyIfStage !== null);
 }

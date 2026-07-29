@@ -15,6 +15,7 @@ export async function seedDefaultSequencesForTrainer(scope: TrainerScope): Promi
   for (const sequence of DEFAULT_SEQUENCES) {
     await createEmailSequence(scope, {
       name: sequence.name,
+      triggerType: "lead_created",
       triggerSource: sequence.triggerSource,
       enabled: true,
       steps: sequence.steps,

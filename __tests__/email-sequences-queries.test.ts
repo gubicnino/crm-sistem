@@ -68,6 +68,7 @@ function textDoc(text: string) {
 
 const validInput = {
   name: "Prijave",
+  triggerType: "lead_created" as const,
   triggerSource: "application" as const,
   enabled: true,
   steps: [
