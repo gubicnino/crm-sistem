@@ -1,9 +1,21 @@
-import type { SequenceContext, SequenceStep } from "@/lib/email/sequences";
+import { substituteVariables, type SequenceRenderContext } from "@/lib/email/variables";
 import { SequenceEmail } from "@/lib/email/templates/sequence-email";
 
-export function renderSequenceStep(step: SequenceStep, ctx: SequenceContext, unsubscribeLink: string) {
+/** What renderSequenceStep needs from a step — email_sequence_steps rows
+ *  (db/schema.ts) satisfy this structurally, extra columns and all. */
+export interface RenderableStep {
+  subject: string;
+  heading: string;
+  paragraphs: string[];
+}
+
+export function renderSequenceStep(step: RenderableStep, ctx: SequenceRenderContext, unsubscribeLink: string) {
   return {
-    subject: step.subject(ctx),
-    react: SequenceEmail({ template: step.template, unsubscribeLink, ...ctx }),
+    subject: substituteVariables(step.subject, ctx),
+    react: SequenceEmail({
+      heading: substituteVariables(step.heading, ctx),
+      paragraphs: step.paragraphs.map((paragraph) => substituteVariables(paragraph, ctx)),
+      unsubscribeLink,
+    }),
   };
 }
