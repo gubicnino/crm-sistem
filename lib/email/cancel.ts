@@ -102,6 +102,22 @@ export async function cancelAllSequencesForTrainer(scope: TrainerScope): Promise
 }
 
 /**
+ * Cancels a caller-supplied set of rows, rather than fetching them itself —
+ * used by lib/email/reapply.ts's applySequenceToExistingLeads, which already
+ * has each lead's row history in hand (it needs it anyway, to compute the
+ * next attempt number) and would otherwise have to re-fetch the same rows
+ * a second time. Same sequential, one-row-failure-doesn't-abort-the-rest
+ * contract as cancelRow's other two callers above.
+ */
+export async function cancelScheduledEmailRows(rows: ScheduledEmail[]): Promise<CancelSequenceResult> {
+  const result: CancelSequenceResult = { canceled: 0, alreadySent: 0, failed: 0 };
+  for (const row of rows) {
+    await cancelRow(row, result);
+  }
+  return result;
+}
+
+/**
  * Re-evaluates every not-yet-sent scheduled_emails row for this lead whose
  * step carries a Phase 3 sendOnlyIfStage condition, canceling any whose
  * condition no longer includes the lead's new stage. This is the *entire*
