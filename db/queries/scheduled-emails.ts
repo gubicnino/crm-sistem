@@ -53,13 +53,22 @@ export interface ScheduledEmailPatch {
   lastError?: string | null;
 }
 
+/** Updates by bare primary key — no TrainerScope parameter, no tenant check
+ *  of its own. Safe today because every call site (lib/email/schedule.ts,
+ *  lib/email/cancel.ts) obtains `id` from a row that was already fetched
+ *  through a scoped query (reserveScheduledEmails, listCancelableScheduledEmails,
+ *  or the cron reconciler's lead-derived systemScope) — never from a
+ *  caller-supplied string. A future call site that passes a client-supplied
+ *  id directly would reintroduce an IDOR; don't add one without scoping it
+ *  first, the same way every existing caller does. */
 export async function updateScheduledEmail(id: string, patch: ScheduledEmailPatch): Promise<void> {
   await db.update(scheduledEmails).set(patch).where(eq(scheduledEmails.id, id));
 }
 
-/** Conditional update so re-applying a transition (e.g. a double-cancel) is a
- *  harmless no-op — only a row currently in `fromStatus` is touched. Returns
- *  whether a row actually transitioned. */
+/** Same no-own-scope precondition as updateScheduledEmail above — see its
+ *  doc. Conditional update so re-applying a transition (e.g. a double-cancel)
+ *  is a harmless no-op — only a row currently in `fromStatus` is touched.
+ *  Returns whether a row actually transitioned. */
 export async function updateScheduledEmailIfStatus(
   id: string,
   fromStatus: ScheduledEmailStatus,
