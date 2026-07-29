@@ -62,13 +62,17 @@ import { systemScope } from "@/lib/tenant";
 
 const scope = systemScope("11111111-1111-1111-1111-111111111111", "operator_cli");
 
+function textDoc(text: string) {
+  return { type: "doc" as const, content: [{ type: "paragraph" as const, content: [{ type: "text" as const, text }] }] };
+}
+
 const validInput = {
   name: "Prijave",
   triggerSource: "application" as const,
   enabled: true,
   steps: [
-    { subject: "Zadeva", heading: "Naslov", paragraphs: ["Odstavek."], dayOffset: 0 },
-    { subject: "Zadeva 2", heading: "Naslov 2", paragraphs: ["Odstavek 2."], dayOffset: 2 },
+    { subject: "Zadeva", body: textDoc("Odstavek."), dayOffset: 0 },
+    { subject: "Zadeva 2", body: textDoc("Odstavek 2."), dayOffset: 2 },
   ],
 };
 

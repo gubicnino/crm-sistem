@@ -2,9 +2,34 @@ import { asc, count, desc, eq, inArray, isNull, or } from "drizzle-orm";
 import { db } from "@/db";
 import { emailSequences, emailSequenceSteps, type EmailSequence, type EmailSequenceStep } from "@/db/schema";
 import type { LeadSource } from "@/db/schema";
+import type { EmailDocNode } from "@/db/types";
 import { MAX_SEQUENCES_PER_TRAINER } from "@/lib/email/constants";
 import { ownedBy, scoped, type TrainerScope } from "@/lib/tenant";
-import type { EmailSequenceFormInput } from "@/lib/validation/email-sequences";
+
+/**
+ * Deliberately its own type, not `EmailSequenceFormInput` (the Zod-inferred
+ * one from lib/validation/email-sequences.ts) — this file has two call
+ * sites: createEmailSequenceAction (whose input already passed
+ * emailSequenceFormSchema, whose narrower literal-typed `body` satisfies
+ * this looser shape) and lib/email/seed-defaults.ts (trusted, hand-built
+ * seed content that has no reason to round-trip through Zod parsing). Using
+ * `EmailDocNode` here — the general shape, not the Zod schema's exact
+ * inferred union — is what makes both call sites typecheck without forcing
+ * seed data through validation it doesn't need.
+ */
+export interface EmailSequenceStepData {
+  id?: string;
+  subject: string;
+  body: EmailDocNode;
+  dayOffset: number;
+}
+
+export interface EmailSequenceData {
+  name: string;
+  triggerSource: LeadSource | null;
+  enabled: boolean;
+  steps: EmailSequenceStepData[];
+}
 
 export class SequenceLimitExceededError extends Error {
   constructor() {
@@ -69,7 +94,7 @@ export async function getEmailSequenceWithSteps(
  *  is a courtesy, not the enforcement boundary. */
 export async function createEmailSequence(
   scope: TrainerScope,
-  input: EmailSequenceFormInput,
+  input: EmailSequenceData,
 ): Promise<EmailSequence> {
   const [{ total }] = await db.select({ total: count() }).from(emailSequences).where(ownedBy(emailSequences, scope));
   if (total >= MAX_SEQUENCES_PER_TRAINER) {
@@ -94,8 +119,7 @@ export async function createEmailSequence(
       position,
       dayOffset: step.dayOffset,
       subject: step.subject,
-      heading: step.heading,
-      paragraphs: step.paragraphs,
+      body: step.body,
     })),
   );
 
@@ -115,7 +139,7 @@ export async function createEmailSequence(
 export async function updateEmailSequence(
   scope: TrainerScope,
   sequenceId: string,
-  input: EmailSequenceFormInput,
+  input: EmailSequenceData,
 ): Promise<EmailSequence | null> {
   const [updatedSequence] = await db
     .update(emailSequences)
@@ -146,8 +170,7 @@ export async function updateEmailSequence(
           position,
           dayOffset: step.dayOffset,
           subject: step.subject,
-          heading: step.heading,
-          paragraphs: step.paragraphs,
+          body: step.body,
         })
         .where(scoped(emailSequenceSteps, scope, eq(emailSequenceSteps.id, step.id)));
     } else {
@@ -157,8 +180,7 @@ export async function updateEmailSequence(
         position,
         dayOffset: step.dayOffset,
         subject: step.subject,
-        heading: step.heading,
-        paragraphs: step.paragraphs,
+        body: step.body,
       });
     }
   }

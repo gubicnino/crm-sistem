@@ -4,8 +4,14 @@ import { emailSequenceFormSchema, emailSequenceStepSchema } from "@/lib/validati
 
 const validStep = {
   subject: "Prejeli smo vašo prijavo",
-  heading: "Hvala za prijavo!",
-  paragraphs: ["Prvi odstavek.", "Drugi odstavek."],
+  body: {
+    type: "doc",
+    content: [
+      { type: "heading", attrs: { level: 2 }, content: [{ type: "text", text: "Hvala za prijavo!" }] },
+      { type: "paragraph", content: [{ type: "text", text: "Prvi odstavek." }] },
+      { type: "paragraph", content: [{ type: "text", text: "Drugi odstavek." }] },
+    ],
+  },
   dayOffset: 0,
 };
 
@@ -19,8 +25,8 @@ describe("emailSequenceStepSchema", () => {
     expect(result.success).toBe(true);
   });
 
-  it("rejects an empty paragraphs array", () => {
-    const result = emailSequenceStepSchema.safeParse({ ...validStep, paragraphs: [] });
+  it("rejects a body with an empty content array", () => {
+    const result = emailSequenceStepSchema.safeParse({ ...validStep, body: { type: "doc", content: [] } });
     expect(result.success).toBe(false);
   });
 
