@@ -1,5 +1,7 @@
+import Link from "next/link";
 import { CancelSequenceButton } from "@/components/emails/cancel-sequence-button";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { listScheduledEmailsForTrainer } from "@/db/queries/scheduled-emails";
 import { scheduledEmailStatusLabels } from "@/lib/labels";
@@ -12,7 +14,12 @@ export default async function EmailsPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <h1 className="text-xl font-semibold">{sl.emails.title}</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-xl font-semibold">{sl.emails.title}</h1>
+        <Button variant="outline" size="sm" render={<Link href="/emails/sequences" />}>
+          {sl.emails.manageSequences}
+        </Button>
+      </div>
       {emails.length === 0 ? (
         <p className="text-muted-foreground">{sl.emails.empty}</p>
       ) : (
