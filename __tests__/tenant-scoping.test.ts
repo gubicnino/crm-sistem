@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm";
 import { QueryBuilder } from "drizzle-orm/pg-core";
 import { describe, expect, it } from "vitest";
-import { leads, notes, rateLimit, scheduledEmails } from "@/db/schema";
+import { emailSequences, emailSequenceSteps, leads, notes, rateLimit, scheduledEmails } from "@/db/schema";
 import { ownedBy, scoped, systemScope } from "@/lib/tenant";
 
 const qb = new QueryBuilder();
@@ -24,6 +24,20 @@ describe("ownedBy", () => {
 
   it("emits a trainer_id predicate for scheduledEmails", () => {
     const query = qb.select().from(scheduledEmails).where(ownedBy(scheduledEmails, scope));
+    const { sql, params } = query.toSQL();
+    expect(sql).toContain('"trainer_id" =');
+    expect(params).toContain(scope.trainerId);
+  });
+
+  it("emits a trainer_id predicate for emailSequences", () => {
+    const query = qb.select().from(emailSequences).where(ownedBy(emailSequences, scope));
+    const { sql, params } = query.toSQL();
+    expect(sql).toContain('"trainer_id" =');
+    expect(params).toContain(scope.trainerId);
+  });
+
+  it("emits a trainer_id predicate for emailSequenceSteps", () => {
+    const query = qb.select().from(emailSequenceSteps).where(ownedBy(emailSequenceSteps, scope));
     const { sql, params } = query.toSQL();
     expect(sql).toContain('"trainer_id" =');
     expect(params).toContain(scope.trainerId);

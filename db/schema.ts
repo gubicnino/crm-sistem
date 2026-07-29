@@ -18,7 +18,9 @@ import type {
   ApplicationQuestion,
   CronRunStats,
   CronRunStatus,
+  EmailSequenceTriggerType,
   LeadAnswers,
+  ScheduledEmailKind,
   ScheduledEmailStatus,
   UserRole,
 } from "./types";
@@ -208,6 +210,58 @@ export const notes = pgTable(
   (t) => [index("notes_trainer_id_lead_id_created_at_idx").on(t.trainerId, t.leadId, t.createdAt.desc())],
 );
 
+export const emailSequences = pgTable(
+  "email_sequences",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    trainerId: uuid("trainer_id")
+      .notNull()
+      .references(() => trainers.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    /** text + $type<>, not a pgEnum — see the EmailSequenceTriggerType doc in
+     *  db/types.ts. Phase 1 only ever writes "lead_created". */
+    triggerType: text("trigger_type").$type<EmailSequenceTriggerType>().notNull().default("lead_created"),
+    /** Meaningful only when triggerType is "lead_created". Null = any source
+     *  enrolls (mirrors the old sequences.ts having exactly one sequence per
+     *  source, generalized to "a sequence can target one source or all"). */
+    triggerSource: leadSourceEnum("trigger_source"),
+    /** Meaningful only when triggerType is "stage_entered" (Phase 3). Always
+     *  null in Phase 1 — no UI sets it yet. */
+    triggerStage: pipelineStageEnum("trigger_stage"),
+    enabled: boolean("enabled").notNull().default(true),
+    ...timestamps,
+  },
+  (t) => [index("email_sequences_trainer_id_idx").on(t.trainerId)],
+);
+
+export const emailSequenceSteps = pgTable(
+  "email_sequence_steps",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    // Denormalized alongside sequenceId per CLAUDE.md: "every domain table
+    // has a trainer_id column" (mirrors notes.trainerId next to leadId).
+    trainerId: uuid("trainer_id")
+      .notNull()
+      .references(() => trainers.id, { onDelete: "cascade" }),
+    sequenceId: uuid("sequence_id")
+      .notNull()
+      .references(() => emailSequences.id, { onDelete: "cascade" }),
+    /** 0-based order within the sequence — the UI's "move up/down". */
+    position: integer("position").notNull(),
+    /** Days after lead enrollment. Must be 0-MAX_SCHEDULE_DAYS (30) — enforced
+     *  in lib/validation/email-sequences.ts, same ceiling the old hardcoded
+     *  sequences.ts asserted at module load. */
+    dayOffset: integer("day_offset").notNull(),
+    subject: text("subject").notNull(),
+    heading: text("heading").notNull(),
+    /** Plain paragraphs, rendered one per <Text> block — see
+     *  lib/email/render.ts. Becomes a Tiptap EmailDoc in Phase 2. */
+    paragraphs: jsonb("paragraphs").$type<string[]>().notNull(),
+    ...timestamps,
+  },
+  (t) => [index("email_sequence_steps_sequence_id_position_idx").on(t.sequenceId, t.position)],
+);
+
 export const scheduledEmails = pgTable(
   "scheduled_emails",
   {
@@ -218,8 +272,26 @@ export const scheduledEmails = pgTable(
     leadId: uuid("lead_id")
       .notNull()
       .references(() => leads.id, { onDelete: "cascade" }),
-    /** Stable step id from lib/email/sequences.ts (e.g. "application_day0_confirmation"). */
+    /** "sequence" for every row the engine creates today; "broadcast" is
+     *  reserved for Phase 5's one-off sends. Lets a future /emails view tell
+     *  the two apart without inferring it from stepId being null. */
+    kind: text("kind").$type<ScheduledEmailKind>().notNull().default("sequence"),
+    /** Stable step key. For rows created by the current engine this is an
+     *  email_sequence_steps.id (uuid, as text); legacy pre-Phase-1 rows carry
+     *  the old hardcoded slug (e.g. "application_day0_confirmation"). */
     sequenceStep: text("sequence_step").notNull(),
+    /** Typed FK mirror of sequenceStep, added when the engine moved from
+     *  hardcoded step ids to DB-backed email_sequence_steps rows. Null for
+     *  rows scheduled before this migration, and set null (not cascaded) if
+     *  the step is later deleted — sequenceStep remains the permanent
+     *  historical key regardless. */
+    stepId: uuid("step_id").references(() => emailSequenceSteps.id, { onDelete: "set null" }),
+    /** Starts at 1. Phase 4 increments this when re-scheduling an
+     *  already-enrolled lead after the trainer edits a sequence ("apply to
+     *  existing leads"), so the same (leadId, sequenceStep) pair can be
+     *  re-enrolled without violating the unique index below or losing the
+     *  prior attempt's audit trail. Unused (always 1) until Phase 4. */
+    attempt: integer("attempt").notNull().default(1),
     /** Null only during the reserve->send pending window (see lib/email/schedule.ts). */
     resendEmailId: text("resend_email_id"),
     scheduledFor: timestamptz("scheduled_for").notNull(),
@@ -231,9 +303,15 @@ export const scheduledEmails = pgTable(
   },
   (t) => [
     // The single most important index in this schema: makes double-scheduling the
-    // same step for the same lead structurally impossible, including when the cron
-    // reconciler (Phase 6) blindly retries — see lib/email/schedule.ts.
-    uniqueIndex("scheduled_emails_lead_id_sequence_step_unique").on(t.leadId, t.sequenceStep),
+    // same step (and same re-enrollment attempt) for the same lead structurally
+    // impossible, including when the cron reconciler blindly retries — see
+    // lib/email/schedule.ts. Renamed (not just widened) from the old
+    // (leadId, sequenceStep) index so drizzle-kit generates a clean drop+create.
+    uniqueIndex("scheduled_emails_lead_id_sequence_step_attempt_unique").on(
+      t.leadId,
+      t.sequenceStep,
+      t.attempt,
+    ),
     index("scheduled_emails_status_scheduled_for_idx").on(t.status, t.scheduledFor),
   ],
 );
@@ -313,6 +391,12 @@ export type NewNote = typeof notes.$inferInsert;
 
 export type ScheduledEmail = typeof scheduledEmails.$inferSelect;
 export type NewScheduledEmail = typeof scheduledEmails.$inferInsert;
+
+export type EmailSequence = typeof emailSequences.$inferSelect;
+export type NewEmailSequence = typeof emailSequences.$inferInsert;
+
+export type EmailSequenceStep = typeof emailSequenceSteps.$inferSelect;
+export type NewEmailSequenceStep = typeof emailSequenceSteps.$inferInsert;
 
 export type Invite = typeof invites.$inferSelect;
 export type NewInvite = typeof invites.$inferInsert;

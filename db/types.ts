@@ -52,3 +52,15 @@ export type CronRunStatus = "running" | "completed" | "failed";
  *  Created exclusively by scripts/create-admin.ts; there is no admin signup or
  *  invite flow. */
 export type UserRole = "trainer" | "admin";
+
+/** How an email_sequences row decides who gets enrolled. Phase 1 only ever
+ *  writes "lead_created" — "stage_entered" is read/written starting Phase 3
+ *  (see lib/email/enroll.ts's header comment). Text + $type<>, not a pgEnum:
+ *  this is app config, not one of the two CLAUDE.md-gated enums
+ *  (pipeline_stage/lead_source). */
+export type EmailSequenceTriggerType = "lead_created" | "stage_entered";
+
+/** Distinguishes a scheduled_emails row created by the sequence engine
+ *  (lib/email/enroll.ts) from a future one-off broadcast (Phase 5). Every
+ *  row today is "sequence"; "broadcast" is unused until Phase 5. */
+export type ScheduledEmailKind = "sequence" | "broadcast";
