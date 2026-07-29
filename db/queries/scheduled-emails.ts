@@ -12,6 +12,11 @@ export interface ReserveScheduledEmailInput {
   stepId: string | null;
   kind: ScheduledEmailKind;
   scheduledFor: Date;
+  /** Defaults to 1 (a lead's first enrollment in this step). Phase 4's
+   *  applySequenceToExistingLeads passes attempt > 1 when re-enrolling a
+   *  lead already enrolled once, after the trainer edits a live sequence —
+   *  see lib/email/reapply.ts. */
+  attempt?: number;
 }
 
 /**
@@ -19,8 +24,6 @@ export interface ReserveScheduledEmailInput {
  * onConflictDoNothing on (leadId, sequenceStep, attempt) makes this
  * idempotent: only rows that did not already exist are returned, so a
  * caller (including the cron reconciler) can call this blindly and safely.
- * `attempt` is never passed here — it defaults to 1 at the DB level; Phase 4
- * is what re-enrolls with attempt > 1.
  */
 export async function reserveScheduledEmails(
   scope: TrainerScope,
@@ -34,6 +37,7 @@ export async function reserveScheduledEmails(
     stepId: input.stepId,
     kind: input.kind,
     scheduledFor: input.scheduledFor,
+    attempt: input.attempt ?? 1,
     status: "pending",
   }));
   return db

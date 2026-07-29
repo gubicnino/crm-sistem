@@ -53,4 +53,33 @@ describe("reserveScheduledEmails", () => {
     expect(result).toEqual([]);
     expect(valuesMock).not.toHaveBeenCalled();
   });
+
+  it("defaults attempt to 1 when not specified", async () => {
+    returningMock.mockResolvedValue([]);
+
+    await reserveScheduledEmails(scope, [
+      { leadId: "lead-1", sequenceStep: "step-1", stepId: "step-1", kind: "sequence", scheduledFor: new Date() },
+    ]);
+
+    const values = valuesMock.mock.calls[0][0];
+    expect(values[0]).toMatchObject({ attempt: 1 });
+  });
+
+  it("passes an explicit attempt through (Phase 4 re-enrollment)", async () => {
+    returningMock.mockResolvedValue([]);
+
+    await reserveScheduledEmails(scope, [
+      {
+        leadId: "lead-1",
+        sequenceStep: "step-1",
+        stepId: "step-1",
+        kind: "sequence",
+        scheduledFor: new Date(),
+        attempt: 2,
+      },
+    ]);
+
+    const values = valuesMock.mock.calls[0][0];
+    expect(values[0]).toMatchObject({ attempt: 2 });
+  });
 });
