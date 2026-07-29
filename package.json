@@ -18,8 +18,7 @@
     "trainer:set-from": "tsx scripts/set-trainer-from.ts",
     "admin:create": "tsx scripts/create-admin.ts",
     "seed:demo": "tsx scripts/seed-demo.ts",
-    "seed:default-sequences": "tsx scripts/seed-default-sequences.ts",
-    "backfill:email-doc-bodies": "tsx scripts/backfill-email-doc-bodies.ts"
+    "seed:default-sequences": "tsx scripts/seed-default-sequences.ts"
   },
   "overrides": {
     "esbuild": "^0.28.1",
