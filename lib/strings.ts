@@ -133,6 +133,15 @@ export const sl = {
     editorInsertButton: "Gumb",
     editorButtonLabelPrompt: "Napis na gumbu:",
     editorButtonHrefPrompt: "Spletni naslov gumba (https://...):",
+    // Parameterized rather than assembled in JSX — see CLAUDE.md's UI-strings
+    // convention: Slovenian sentence assembly belongs here, not in a component.
+    applyToExisting: (n: number) => `Uporabi za obstoječe stranke (${n})`,
+    applyConfirmTitle: "Uporabi spremembe za obstoječe stranke?",
+    applyConfirmBody: (n: number) =>
+      `To bo preklicalo še neposlana e-sporočila te sekvence za ${n} vključenih strank in jih znova razporedilo z zdajšnjo vsebino in koraki. Koraki, katerih nov datum bi bil že v preteklosti, ne bodo poslani z zamudo.`,
+    applyConfirmButton: "Uporabi",
+    applySuccess: (n: number) => `Sekvenca je bila znova uporabljena za ${n} strank.`,
+    applyLimitExceeded: "Preveč vključenih strank naenkrat. Obrnite se na podporo.",
   },
   analytics: {
     title: "Analitika",

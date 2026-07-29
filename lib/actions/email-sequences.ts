@@ -7,10 +7,12 @@ import {
   setEmailSequenceEnabled,
   updateEmailSequence,
 } from "@/db/queries/email-sequences";
+import { ApplyLimitExceededError, applySequenceToExistingLeads } from "@/lib/email/reapply";
 import { requireTrainerOrThrow } from "@/lib/tenant";
 import { emailSequenceFormSchema } from "@/lib/validation/email-sequences";
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
+export type ApplyActionResult = { ok: true; affectedLeads: number } | { ok: false; error: string };
 
 export async function createEmailSequenceAction(input: unknown): Promise<ActionResult> {
   const parsed = emailSequenceFormSchema.safeParse(input);
@@ -54,4 +56,20 @@ export async function setEmailSequenceEnabledAction(sequenceId: string, enabled:
   }
   refresh();
   return { ok: true };
+}
+
+/** The trainer's "Uporabi za obstoječe stranke" confirm action — see
+ *  lib/email/reapply.ts's applySequenceToExistingLeads for what it does. */
+export async function applySequenceToExistingLeadsAction(sequenceId: string): Promise<ApplyActionResult> {
+  const scope = await requireTrainerOrThrow();
+  try {
+    const result = await applySequenceToExistingLeads(scope, sequenceId);
+    refresh();
+    return { ok: true, affectedLeads: result.affectedLeads };
+  } catch (err) {
+    if (err instanceof ApplyLimitExceededError) {
+      return { ok: false, error: "applyLimitExceeded" };
+    }
+    throw err;
+  }
 }
