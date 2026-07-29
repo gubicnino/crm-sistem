@@ -13,6 +13,7 @@ async function main() {
   const { users, leads, notes } = await import("../db/schema");
   const { createUserAndTrainer } = await import("../db/queries/auth");
   const { updateApplicationQuestions } = await import("../db/queries/trainers");
+  const { seedDefaultSequencesForTrainer } = await import("../lib/email/seed-defaults");
   const { mintInvite } = await import("../lib/invites");
   const { hashPassword } = await import("../lib/password");
   const { generateSiteKey } = await import("../lib/site-key");
@@ -51,6 +52,8 @@ async function main() {
     },
     { id: "availability", label: "Kdaj si na voljo za treninge?", type: "text", required: false },
   ]);
+
+  await seedDefaultSequencesForTrainer(scope);
 
   const now = Date.now();
   const daysAgo = (n: number) => new Date(now - n * 24 * 60 * 60 * 1000);

@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { AuthError } from "next-auth";
 import { createUserAndTrainer, getUserByEmail, updateUserPasswordHash } from "@/db/queries/auth";
 import { resend, FROM_EMAIL } from "@/lib/email/client";
+import { seedDefaultSequencesForTrainer } from "@/lib/email/seed-defaults";
 import { PasswordResetEmail } from "@/lib/email/templates/password-reset";
 import { verifyInviteToken } from "@/lib/invites";
 import { signIn, signOut } from "@/lib/auth";
@@ -12,6 +13,7 @@ import { hashPassword } from "@/lib/password";
 import { mintPasswordResetToken, passwordResetLink, redeemPasswordResetToken } from "@/lib/password-reset";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { generateSiteKey } from "@/lib/site-key";
+import { systemScope } from "@/lib/tenant";
 import {
   loginSchema,
   redeemInviteSchema,
@@ -80,13 +82,18 @@ export async function redeemInviteAction(
   const passwordHash = await hashPassword(parsed.data.password);
   const siteKey = generateSiteKey(parsed.data.name);
 
-  await createUserAndTrainer({
+  const { trainer } = await createUserAndTrainer({
     email: invite.email,
     passwordHash,
     name: parsed.data.name,
     siteKey,
     inviteId: invite.id,
   });
+
+  // registration: this is the ONLY place trainer creation and sequence
+  // seeding happen together outside a script — see systemScope's doc for
+  // why "registration" is its own closed reason.
+  await seedDefaultSequencesForTrainer(systemScope(trainer.id, "registration"));
 
   try {
     await signIn("credentials", {
