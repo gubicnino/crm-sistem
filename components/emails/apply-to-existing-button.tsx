@@ -31,6 +31,13 @@ export function ApplyToExistingButton({ sequenceId, enrolledCount }: { sequenceI
       }
       setOpen(false);
       toast.success(sl.emails.applySuccess(result.affectedLeads));
+      // Some steps couldn't be safely re-applied this run — their prior
+      // send couldn't be confirmed canceled, so re-reserving was skipped
+      // rather than risking a duplicate. Surfaced as a separate warning,
+      // not folded into the success toast, so it isn't missed.
+      if (result.blockedByCancelFailure > 0) {
+        toast.warning(sl.emails.applyBlockedByCancelFailure(result.blockedByCancelFailure));
+      }
     });
   }
 

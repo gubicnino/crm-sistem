@@ -142,6 +142,8 @@ export const sl = {
     applyConfirmButton: "Uporabi",
     applySuccess: (n: number) => `Sekvenca je bila znova uporabljena za ${n} strank.`,
     applyLimitExceeded: "Preveč vključenih strank naenkrat. Obrnite se na podporo.",
+    applyBlockedByCancelFailure: (n: number) =>
+      `${n} ${n === 1 ? "korak ni bil posodobljen" : "korakov ni bilo posodobljenih"}, ker preklic prejšnjega e-sporočila ni uspel. Poskusite znova čez nekaj minut.`,
   },
   analytics: {
     title: "Analitika",

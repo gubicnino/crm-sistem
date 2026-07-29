@@ -12,7 +12,9 @@ import { requireTrainerOrThrow } from "@/lib/tenant";
 import { emailSequenceFormSchema } from "@/lib/validation/email-sequences";
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
-export type ApplyActionResult = { ok: true; affectedLeads: number } | { ok: false; error: string };
+export type ApplyActionResult =
+  | { ok: true; affectedLeads: number; blockedByCancelFailure: number }
+  | { ok: false; error: string };
 
 export async function createEmailSequenceAction(input: unknown): Promise<ActionResult> {
   const parsed = emailSequenceFormSchema.safeParse(input);
@@ -65,7 +67,7 @@ export async function applySequenceToExistingLeadsAction(sequenceId: string): Pr
   try {
     const result = await applySequenceToExistingLeads(scope, sequenceId);
     refresh();
-    return { ok: true, affectedLeads: result.affectedLeads };
+    return { ok: true, affectedLeads: result.affectedLeads, blockedByCancelFailure: result.blockedByCancelFailure };
   } catch (err) {
     if (err instanceof ApplyLimitExceededError) {
       return { ok: false, error: "applyLimitExceeded" };

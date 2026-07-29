@@ -28,7 +28,20 @@ export interface ApplyResult {
   affectedLeads: number;
   scheduledSteps: number;
   skippedPastSteps: number;
+  /** A step whose prior row could not be confirmed canceled (Resend
+   *  returned something other than a clean cancel or a reliable
+   *  "already sent") is skipped rather than re-reserved this run — see
+   *  the header comment on why re-reserving it anyway would risk a
+   *  genuine double-send. */
+  blockedByCancelFailure: number;
 }
+
+/** Statuses where the prior row might still be a live, outstanding Resend
+ *  schedule — anything in this set blocks re-reserving that step this run.
+ *  `cancel_failed` is included deliberately: lib/email/cancel.ts's own
+ *  doc explains that a cancel failure (including Resend's ambiguous
+ *  `not_found`) does NOT reliably mean the email won't still be sent. */
+const UNRESOLVED_AFTER_CANCEL_STATUSES = new Set(["scheduled", "pending", "cancel_failed"]);
 
 /**
  * The trainer's "Uporabi za obstoječe stranke" action: re-enrolls every lead
@@ -44,6 +57,15 @@ export interface ApplyResult {
  * Skips a lead entirely if they've unsubscribed or reached a terminal stage
  * since their original enrollment — never resurrect a sequence for someone
  * who opted out or already converted/was lost.
+ *
+ * Cancellation is re-verified, not assumed: after asking Resend to cancel
+ * a lead's outstanding rows for this sequence, this function re-fetches
+ * that lead's row history and only re-reserves a step whose prior row
+ * actually resolved to `canceled` or `sent` — a step whose row is still
+ * `scheduled`/`pending`/`cancel_failed` is skipped this run rather than
+ * re-reserved, because reserving anyway could hand Resend a second live
+ * schedule for the exact same logical step (CLAUDE.md: "the single most
+ * damaging bug this system can produce").
  */
 export async function applySequenceToExistingLeads(scope: TrainerScope, sequenceId: string): Promise<ApplyResult> {
   const found = await getEmailSequenceWithSteps(scope, sequenceId);
@@ -62,7 +84,7 @@ export async function applySequenceToExistingLeads(scope: TrainerScope, sequence
   const from = trainer?.fromEmail ?? FROM_EMAIL;
   const trainerName = trainer?.name ?? "";
 
-  const result: ApplyResult = { affectedLeads: 0, scheduledSteps: 0, skippedPastSteps: 0 };
+  const result: ApplyResult = { affectedLeads: 0, scheduledSteps: 0, skippedPastSteps: 0, blockedByCancelFailure: 0 };
   const now = new Date();
 
   for (const { leadId, enrolledAt } of enrolled) {
@@ -76,11 +98,23 @@ export async function applySequenceToExistingLeads(scope: TrainerScope, sequence
       await cancelScheduledEmailRows(cancelable);
     }
 
+    // Re-fetch after the cancellation attempt — never trust the discarded
+    // aggregate result from cancelScheduledEmailRows for a per-step
+    // decision. A step whose row is still in one of the "might still be
+    // live" statuses is blocked from re-reservation this run (see
+    // UNRESOLVED_AFTER_CANCEL_STATUSES's doc).
+    const historyAfterCancel = cancelable.length > 0 ? await listScheduledEmailsForLeadInSequence(scope, leadId, stepIds) : history;
+    const blockedSteps = new Set(
+      historyAfterCancel
+        .filter((row) => UNRESOLVED_AFTER_CANCEL_STATUSES.has(row.status))
+        .map((row) => row.sequenceStep),
+    );
+
     // Next attempt per step = 1 + the highest attempt this lead/step pair
     // has ever used (across every status — a sent row's attempt still
     // counts, since the unique index doesn't care about status).
     const maxAttemptByStep = new Map<string, number>();
-    for (const row of history) {
+    for (const row of historyAfterCancel) {
       const current = maxAttemptByStep.get(row.sequenceStep) ?? 0;
       if (row.attempt > current) maxAttemptByStep.set(row.sequenceStep, row.attempt);
     }
@@ -90,6 +124,11 @@ export async function applySequenceToExistingLeads(scope: TrainerScope, sequence
     let affectedThisLead = false;
 
     for (const step of steps as EmailSequenceStep[]) {
+      if (blockedSteps.has(step.id)) {
+        result.blockedByCancelFailure++;
+        continue;
+      }
+
       const scheduledFor = addDays(enrolledAt, step.dayOffset);
       if (scheduledFor <= now) {
         result.skippedPastSteps++;

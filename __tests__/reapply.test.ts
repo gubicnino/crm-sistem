@@ -77,7 +77,7 @@ describe("applySequenceToExistingLeads", () => {
 
     const result = await applySequenceToExistingLeads(scope, "seq-1");
 
-    expect(result).toEqual({ affectedLeads: 0, scheduledSteps: 0, skippedPastSteps: 0 });
+    expect(result).toEqual({ affectedLeads: 0, scheduledSteps: 0, skippedPastSteps: 0, blockedByCancelFailure: 0 });
     expect(cancelScheduledEmailRowsMock).not.toHaveBeenCalled();
   });
 
@@ -95,18 +95,40 @@ describe("applySequenceToExistingLeads", () => {
     const farFutureEnrollment = new Date(Date.now() + 100 * 24 * 60 * 60 * 1000); // so dayOffset:5 lands in the future
     listLeadsEnrolledInSequenceMock.mockResolvedValue([{ leadId: "lead-1", enrolledAt: farFutureEnrollment }]);
     getLeadMock.mockResolvedValue({ id: "lead-1", name: "Ana", email: "ana@example.com", unsubscribedAt: null, stage: "contacted" });
-    listScheduledEmailsForLeadInSequenceMock.mockResolvedValue([
-      { id: "se-old", sequenceStep: "step-1", attempt: 1, status: "scheduled" },
-    ]);
+    // First call: the row is still live. Second call (after the cancel
+    // attempt): it resolved to "canceled" — the realistic post-cancel state.
+    listScheduledEmailsForLeadInSequenceMock
+      .mockResolvedValueOnce([{ id: "se-old", sequenceStep: "step-1", attempt: 1, status: "scheduled" }])
+      .mockResolvedValueOnce([{ id: "se-old", sequenceStep: "step-1", attempt: 1, status: "canceled" }]);
     reserveScheduledEmailsMock.mockResolvedValue([
       { id: "se-new", leadId: "lead-1", sequenceStep: "step-1", scheduledFor: new Date() },
     ]);
 
-    await applySequenceToExistingLeads(scope, "seq-1");
+    const result = await applySequenceToExistingLeads(scope, "seq-1");
 
     expect(cancelScheduledEmailRowsMock).toHaveBeenCalledWith([
       { id: "se-old", sequenceStep: "step-1", attempt: 1, status: "scheduled" },
     ]);
+    // Cancellation resolved cleanly, so the step is NOT blocked — it gets re-reserved.
+    expect(reserveScheduledEmailsMock).toHaveBeenCalledTimes(1);
+    expect(result.blockedByCancelFailure).toBe(0);
+  });
+
+  it("blocks re-reservation of a step whose prior row is still cancel_failed after the cancel attempt", async () => {
+    const farFutureEnrollment = new Date(Date.now() + 100 * 24 * 60 * 60 * 1000);
+    listLeadsEnrolledInSequenceMock.mockResolvedValue([{ leadId: "lead-1", enrolledAt: farFutureEnrollment }]);
+    getLeadMock.mockResolvedValue({ id: "lead-1", name: "Ana", email: "ana@example.com", unsubscribedAt: null, stage: "contacted" });
+    // Both fetches show the row unresolved — cancellation did not succeed.
+    listScheduledEmailsForLeadInSequenceMock
+      .mockResolvedValueOnce([{ id: "se-old", sequenceStep: "step-1", attempt: 1, status: "scheduled" }])
+      .mockResolvedValueOnce([{ id: "se-old", sequenceStep: "step-1", attempt: 1, status: "cancel_failed" }]);
+
+    const result = await applySequenceToExistingLeads(scope, "seq-1");
+
+    expect(reserveScheduledEmailsMock).not.toHaveBeenCalled();
+    expect(sendReservedStepMock).not.toHaveBeenCalled();
+    expect(result.blockedByCancelFailure).toBe(1);
+    expect(result.affectedLeads).toBe(0);
   });
 
   it("computes the next attempt as 1 + the highest attempt this lead/step has ever used", async () => {
@@ -152,7 +174,7 @@ describe("applySequenceToExistingLeads", () => {
     const result = await applySequenceToExistingLeads(scope, "seq-1");
 
     expect(sendReservedStepMock).toHaveBeenCalledTimes(1);
-    expect(result).toEqual({ affectedLeads: 1, scheduledSteps: 1, skippedPastSteps: 0 });
+    expect(result).toEqual({ affectedLeads: 1, scheduledSteps: 1, skippedPastSteps: 0, blockedByCancelFailure: 0 });
   });
 
   it("does not count a lead as affected when reserveScheduledEmails returns nothing (already re-applied)", async () => {
