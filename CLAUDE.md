@@ -327,3 +327,11 @@ Do not silently "improve" any of these — they are deliberate:
 - Resend for sequence timing, cron for housekeeping only
 - Persisting `resendEmailId` and canceling on conversion
 - The sequence/step/broadcast caps (`MAX_SEQUENCES_PER_TRAINER`, `MAX_STEPS_PER_SEQUENCE`, `MAX_APPLY_TO_EXISTING_LEADS_PER_RUN`, `MAX_BROADCAST_RECIPIENTS`) — product limits, not technical ones; raising one silently hides a bug signal instead of surfacing it
+
+
+# Claude for Chrome
+
+- Use `read_page` to get element refs from the accessibility tree
+- Use `find` to locate elements by description
+- Click/interact using `ref`, not coordinates
+- NEVER take screenshots unless explicitly requested by the user
