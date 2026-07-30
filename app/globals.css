@@ -202,3 +202,24 @@
     @apply font-sans;
   }
 }
+
+@layer base {
+  .ProseMirror h2 {
+    @apply text-xl font-semibold;
+  }
+  .ProseMirror h3 {
+    @apply text-lg font-semibold;
+  }
+  .ProseMirror p {
+    @apply text-sm leading-relaxed;
+  }
+  .ProseMirror p + p {
+    @apply mt-2;
+  }
+  .ProseMirror ul {
+    @apply list-disc pl-5 text-sm leading-relaxed;
+  }
+  .ProseMirror ol {
+    @apply list-decimal pl-5 text-sm leading-relaxed;
+  }
+}

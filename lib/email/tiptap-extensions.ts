@@ -4,9 +4,9 @@ import type { EmailDocVariableName } from "@/db/types";
 /** In-editor label shown for a `variable` node's chip — kept here (not
  *  imported from lib/email/rich-text.tsx, which resolves the actual value
  *  at send time) since this is purely editor-display, never sent. */
-const VARIABLE_LABELS: Record<EmailDocVariableName, string> = {
-  leadName: "Ime stranke",
-  trainerName: "Ime trenerja",
+export const VARIABLE_LABELS: Record<EmailDocVariableName, string> = {
+  leadName: "[Ime stranke]",
+  trainerName: "[Ime trenerja]",
 };
 
 /**
