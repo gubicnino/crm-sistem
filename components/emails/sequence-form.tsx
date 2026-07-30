@@ -14,6 +14,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { RichTextEditor } from "@/components/emails/rich-text-editor";
+import { StepPreview } from "@/components/emails/step-preview";
 import type { EmailSequence, EmailSequenceStep, LeadSource, PipelineStage } from "@/db/schema";
 import type { EmailDocNode } from "@/db/types";
 import { createEmailSequenceAction, updateEmailSequenceAction } from "@/lib/actions/email-sequences";
@@ -92,7 +93,15 @@ const sequenceFormSchema = z.discriminatedUnion("triggerType", [
 const EMPTY_BODY: EmailDocNode = { type: "doc", content: [{ type: "paragraph", content: [] }] };
 const EMPTY_STEP: StepFormValues = { subject: "", body: EMPTY_BODY, dayOffset: 0, sendOnlyIfStage: [] };
 
-export function SequenceForm({ sequence, steps }: { sequence?: EmailSequence; steps?: EmailSequenceStep[] }) {
+export function SequenceForm({
+  sequence,
+  steps,
+  trainerName,
+}: {
+  sequence?: EmailSequence;
+  steps?: EmailSequenceStep[];
+  trainerName: string;
+}) {
   const router = useRouter();
   const [isSaving, setIsSaving] = useState(false);
 
@@ -289,63 +298,75 @@ export function SequenceForm({ sequence, steps }: { sequence?: EmailSequence; st
               <CardTitle>{sl.emails.stepTitle(index + 1)}</CardTitle>
             </CardHeader>
             <CardContent className="flex flex-col gap-3">
-              <div className="grid grid-cols-2 gap-3">
-                <div className="flex flex-col gap-1">
-                  <Label>{sl.emails.stepDayOffsetLabel}</Label>
-                  <Input
-                    type="number"
-                    min={0}
-                    max={MAX_SCHEDULE_DAYS}
-                    {...register(`steps.${index}.dayOffset`, { valueAsNumber: true })}
-                  />
-                  {rowErrors?.dayOffset && <p className="text-xs text-destructive">{rowErrors.dayOffset.message}</p>}
-                </div>
-                <div className="flex flex-col gap-1">
-                  <Label>{sl.emails.stepSubjectLabel}</Label>
-                  <Input {...register(`steps.${index}.subject`)} />
-                  {rowErrors?.subject && <p className="text-xs text-destructive">{rowErrors.subject.message}</p>}
-                </div>
-              </div>
-              <div className="flex flex-col gap-1">
-                <Label>{sl.emails.stepBodyLabel}</Label>
-                <Controller
-                  control={control}
-                  name={`steps.${index}.body`}
-                  render={({ field: bodyField }) => (
-                    <RichTextEditor value={bodyField.value} onChange={bodyField.onChange} />
-                  )}
-                />
-                {rowErrors?.body && <p className="text-xs text-destructive">{sl.errors.validation}</p>}
-              </div>
-              <div className="flex flex-col gap-1">
-                <Label>{sl.emails.stepConditionLabel}</Label>
-                <p className="text-xs text-muted-foreground">{sl.emails.stepConditionHint}</p>
-                <Controller
-                  control={control}
-                  name={`steps.${index}.sendOnlyIfStage`}
-                  render={({ field: conditionField }) => (
-                    <div className="flex flex-wrap gap-3">
-                      {NON_TERMINAL_STAGES.map((stage) => {
-                        const checked = conditionField.value.includes(stage);
-                        return (
-                          <label key={stage} className="flex items-center gap-1.5 text-sm">
-                            <Checkbox
-                              checked={checked}
-                              onCheckedChange={(next) => {
-                                conditionField.onChange(
-                                  next
-                                    ? [...conditionField.value, stage]
-                                    : conditionField.value.filter((s) => s !== stage),
-                                );
-                              }}
-                            />
-                            {pipelineStageLabels[stage]}
-                          </label>
-                        );
-                      })}
+              <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+                <div className="flex flex-col gap-3">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="flex flex-col gap-1">
+                      <Label>{sl.emails.stepDayOffsetLabel}</Label>
+                      <Input
+                        type="number"
+                        min={0}
+                        max={MAX_SCHEDULE_DAYS}
+                        {...register(`steps.${index}.dayOffset`, { valueAsNumber: true })}
+                      />
+                      {rowErrors?.dayOffset && <p className="text-xs text-destructive">{rowErrors.dayOffset.message}</p>}
                     </div>
-                  )}
-                />
+                    <div className="flex flex-col gap-1">
+                      <Label>{sl.emails.stepSubjectLabel}</Label>
+                      <Input {...register(`steps.${index}.subject`)} />
+                      {rowErrors?.subject && <p className="text-xs text-destructive">{rowErrors.subject.message}</p>}
+                    </div>
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <Label>{sl.emails.stepBodyLabel}</Label>
+                    <Controller
+                      control={control}
+                      name={`steps.${index}.body`}
+                      render={({ field: bodyField }) => (
+                        <RichTextEditor value={bodyField.value} onChange={bodyField.onChange} />
+                      )}
+                    />
+                    {rowErrors?.body && <p className="text-xs text-destructive">{sl.errors.validation}</p>}
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <Label>{sl.emails.stepConditionLabel}</Label>
+                    <p className="text-xs text-muted-foreground">{sl.emails.stepConditionHint}</p>
+                    <Controller
+                      control={control}
+                      name={`steps.${index}.sendOnlyIfStage`}
+                      render={({ field: conditionField }) => (
+                        <div className="flex flex-wrap gap-3">
+                          {NON_TERMINAL_STAGES.map((stage) => {
+                            const checked = conditionField.value.includes(stage);
+                            return (
+                              <label key={stage} className="flex items-center gap-1.5 text-sm">
+                                <Checkbox
+                                  checked={checked}
+                                  onCheckedChange={(next) => {
+                                    conditionField.onChange(
+                                      next
+                                        ? [...conditionField.value, stage]
+                                        : conditionField.value.filter((s) => s !== stage),
+                                    );
+                                  }}
+                                />
+                                {pipelineStageLabels[stage]}
+                              </label>
+                            );
+                          })}
+                        </div>
+                      )}
+                    />
+                  </div>
+                </div>
+                <div className="flex flex-col gap-1">
+                  <Label>{sl.emails.stepPreviewLabel}</Label>
+                  <StepPreview
+                    subject={watch(`steps.${index}.subject`)}
+                    body={watch(`steps.${index}.body`)}
+                    trainerName={trainerName}
+                  />
+                </div>
               </div>
               <div className="flex justify-between">
                 <div className="flex gap-2">

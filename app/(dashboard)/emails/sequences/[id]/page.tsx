@@ -5,6 +5,7 @@ import { ApplyToExistingButton } from "@/components/emails/apply-to-existing-but
 import { Button } from "@/components/ui/button";
 import { SequenceForm } from "@/components/emails/sequence-form";
 import { getEmailSequenceWithSteps, listLeadsEnrolledInSequence } from "@/db/queries/email-sequences";
+import { getTrainer } from "@/db/queries/trainers";
 import { sl } from "@/lib/strings";
 import { requireTrainer } from "@/lib/tenant";
 
@@ -15,6 +16,7 @@ export default async function EditEmailSequencePage({ params }: { params: Promis
   if (!result) notFound();
 
   const enrolledLeads = await listLeadsEnrolledInSequence(scope, id);
+  const trainer = await getTrainer(scope);
 
   return (
     <div className="flex flex-col gap-4">
@@ -24,7 +26,7 @@ export default async function EditEmailSequencePage({ params }: { params: Promis
           {sl.emails.sequenceBackToList}
         </Button>
       </PageHeader>
-      <SequenceForm sequence={result.sequence} steps={result.steps} />
+      <SequenceForm sequence={result.sequence} steps={result.steps} trainerName={trainer?.name ?? ""} />
     </div>
   );
 }

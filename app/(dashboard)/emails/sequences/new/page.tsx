@@ -4,6 +4,7 @@ import { PageHeader } from "@/components/dashboard/page-header";
 import { Button } from "@/components/ui/button";
 import { SequenceForm } from "@/components/emails/sequence-form";
 import { listEmailSequencesForTrainer } from "@/db/queries/email-sequences";
+import { getTrainer } from "@/db/queries/trainers";
 import { MAX_SEQUENCES_PER_TRAINER } from "@/lib/email/constants";
 import { sl } from "@/lib/strings";
 import { requireTrainer } from "@/lib/tenant";
@@ -14,6 +15,7 @@ export default async function NewEmailSequencePage() {
   if (sequences.length >= MAX_SEQUENCES_PER_TRAINER) {
     redirect("/emails/sequences");
   }
+  const trainer = await getTrainer(scope);
 
   return (
     <div className="flex flex-col gap-4">
@@ -22,7 +24,7 @@ export default async function NewEmailSequencePage() {
           {sl.emails.sequenceBackToList}
         </Button>
       </PageHeader>
-      <SequenceForm />
+      <SequenceForm trainerName={trainer?.name ?? ""} />
     </div>
   );
 }
