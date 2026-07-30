@@ -58,6 +58,12 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Nested git worktrees (see superpowers:using-git-worktrees) are full
+    // repo checkouts with their own source tree — without this, lint runs
+    // from the main checkout also lint (and fail on) whatever branch state
+    // a worktree happens to be sitting on.
+    ".worktrees/**",
+    ".claude/worktrees/**",
   ]),
 ]);
 
