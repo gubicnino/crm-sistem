@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { PageHeader } from "@/components/dashboard/page-header";
 import { Button } from "@/components/ui/button";
 import { SequenceForm } from "@/components/emails/sequence-form";
 import { listEmailSequencesForTrainer } from "@/db/queries/email-sequences";
@@ -16,12 +17,11 @@ export default async function NewEmailSequencePage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold">{sl.emails.sequenceNewTitle}</h1>
+      <PageHeader title={sl.emails.sequenceNewTitle}>
         <Button variant="outline" size="sm" render={<Link href="/emails/sequences" />}>
           {sl.emails.sequenceBackToList}
         </Button>
-      </div>
+      </PageHeader>
       <SequenceForm />
     </div>
   );

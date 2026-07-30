@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { BroadcastForm } from "@/components/emails/broadcast-form";
 import { LeadFilters } from "@/components/leads/lead-filters";
+import { SourceFilterChips } from "@/components/leads/source-filter-chips";
 import { Button } from "@/components/ui/button";
 import { listLeads } from "@/db/queries/leads";
 import { leadSourceEnum, pipelineStageEnum, type LeadSource, type PipelineStage } from "@/db/schema";
@@ -39,7 +40,10 @@ export default async function SendBroadcastPage({
           {sl.emails.sendBackToEmails}
         </Button>
       </div>
-      <LeadFilters currentStage={stage} currentSource={source} />
+      <div className="flex items-center gap-2">
+        <LeadFilters currentStage={stage} />
+        <SourceFilterChips current={source} />
+      </div>
       <BroadcastForm leads={eligibleLeads} />
     </div>
   );

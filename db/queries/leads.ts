@@ -1,4 +1,4 @@
-import { and, desc, eq, gte, inArray, isNull, notExists, notInArray, sql } from "drizzle-orm";
+import { and, count, desc, eq, gte, ilike, inArray, isNull, notExists, notInArray, or, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { leads, scheduledEmails, type Lead, type LeadSource, type PipelineStage } from "@/db/schema";
 import type { LeadAnswers } from "@/db/types";
@@ -21,6 +21,44 @@ export async function listLeads(scope: TrainerScope, filters: ListLeadsFilters =
     .from(leads)
     .where(scoped(leads, scope, ...conditions))
     .orderBy(desc(leads.createdAt));
+}
+
+export interface ListLeadsPagedFilters extends ListLeadsFilters {
+  /** Matched against name + email via ilike — kept separate from listLeads
+   *  (used unpaginated by /applications and the broadcast recipient picker)
+   *  rather than widening that function's signature. */
+  search?: string;
+  page: number;
+  pageSize: number;
+}
+
+export interface ListLeadsPagedResult {
+  leads: Lead[];
+  total: number;
+}
+
+export async function listLeadsPaged(scope: TrainerScope, filters: ListLeadsPagedFilters): Promise<ListLeadsPagedResult> {
+  const conditions = [];
+  if (filters.stage) conditions.push(eq(leads.stage, filters.stage));
+  if (filters.source) conditions.push(eq(leads.source, filters.source));
+  if (filters.search?.trim()) {
+    const term = `%${filters.search.trim()}%`;
+    conditions.push(or(ilike(leads.name, term), ilike(leads.email, term)));
+  }
+  const where = scoped(leads, scope, ...conditions);
+
+  const [rows, [{ value: total }]] = await Promise.all([
+    db
+      .select()
+      .from(leads)
+      .where(where)
+      .orderBy(desc(leads.createdAt))
+      .limit(filters.pageSize)
+      .offset((filters.page - 1) * filters.pageSize),
+    db.select({ value: count() }).from(leads).where(where),
+  ]);
+
+  return { leads: rows, total };
 }
 
 export async function getLead(scope: TrainerScope, leadId: string): Promise<Lead | null> {

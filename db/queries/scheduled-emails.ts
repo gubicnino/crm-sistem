@@ -1,6 +1,13 @@
 import { and, count, desc, eq, gt, inArray, lt } from "drizzle-orm";
 import { db } from "@/db";
-import { leads, scheduledEmails, type NewScheduledEmail, type ScheduledEmail } from "@/db/schema";
+import {
+  emailSequences,
+  emailSequenceSteps,
+  leads,
+  scheduledEmails,
+  type NewScheduledEmail,
+  type ScheduledEmail,
+} from "@/db/schema";
 import type { ScheduledEmailKind, ScheduledEmailStatus } from "@/db/types";
 import { RECONCILE_RETRY_MAX_HOURS, RECONCILE_RETRY_MIN_MINUTES } from "@/lib/email/constants";
 import { scoped, type TrainerScope } from "@/lib/tenant";
@@ -188,10 +195,20 @@ export async function countScheduledEmailsByStatus(
 export interface ScheduledEmailWithLead extends ScheduledEmail {
   leadName: string | null;
   leadEmail: string;
+  leadStage: (typeof leads.$inferSelect)["stage"];
+  leadUnsubscribedAt: Date | null;
+  /** Null when: the step was since deleted (stepId set-null, sequenceStep keeps
+   *  the historical slug), the row predates the sequence-editor migration
+   *  (legacy hardcoded slug), or kind is "broadcast" (no sequence at all). The
+   *  UI is responsible for picking a fallback label per case — see
+   *  lib/badge-styles.ts's sibling, sl.emails.sequenceFallback*. */
+  sequenceName: string | null;
+  stepPosition: number | null;
 }
 
 /** Powers the /emails dashboard tab — every scheduled_emails row for this
- *  trainer, joined with the lead's display name/email. */
+ *  trainer, joined with the lead's display name/email and (when resolvable)
+ *  the sequence/step it belongs to. */
 export async function listScheduledEmailsForTrainer(scope: TrainerScope): Promise<ScheduledEmailWithLead[]> {
   return db
     .select({
@@ -213,9 +230,45 @@ export async function listScheduledEmailsForTrainer(scope: TrainerScope): Promis
       updatedAt: scheduledEmails.updatedAt,
       leadName: leads.name,
       leadEmail: leads.email,
+      leadStage: leads.stage,
+      leadUnsubscribedAt: leads.unsubscribedAt,
+      sequenceName: emailSequences.name,
+      stepPosition: emailSequenceSteps.position,
     })
     .from(scheduledEmails)
     .innerJoin(leads, eq(scheduledEmails.leadId, leads.id))
+    .leftJoin(emailSequenceSteps, eq(scheduledEmails.stepId, emailSequenceSteps.id))
+    .leftJoin(emailSequences, eq(emailSequenceSteps.sequenceId, emailSequences.id))
     .where(scoped(scheduledEmails, scope))
     .orderBy(desc(scheduledEmails.scheduledFor));
+}
+
+export interface ScheduledEmailStats {
+  scheduled: number;
+  sentThisWeek: number;
+  canceledThisWeek: number;
+}
+
+/** KPI row on /emails — one scoped pass, three counts, per getAnalyticsSummary's
+ *  established "single query, compute in JS" shape. */
+export async function getScheduledEmailStats(scope: TrainerScope): Promise<ScheduledEmailStats> {
+  const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+  const rows = await db
+    .select({
+      status: scheduledEmails.status,
+      sentAt: scheduledEmails.sentAt,
+      canceledAt: scheduledEmails.canceledAt,
+    })
+    .from(scheduledEmails)
+    .where(scoped(scheduledEmails, scope));
+
+  let scheduled = 0;
+  let sentThisWeek = 0;
+  let canceledThisWeek = 0;
+  for (const row of rows) {
+    if (row.status === "scheduled" || row.status === "pending") scheduled++;
+    if (row.sentAt && row.sentAt >= sevenDaysAgo) sentThisWeek++;
+    if (row.canceledAt && row.canceledAt >= sevenDaysAgo) canceledThisWeek++;
+  }
+  return { scheduled, sentThisWeek, canceledThisWeek };
 }

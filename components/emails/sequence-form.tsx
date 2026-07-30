@@ -8,9 +8,11 @@ import { toast } from "sonner";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { RichTextEditor } from "@/components/emails/rich-text-editor";
 import type { EmailSequence, EmailSequenceStep, LeadSource, PipelineStage } from "@/db/schema";
 import type { EmailDocNode } from "@/db/types";
@@ -19,6 +21,7 @@ import { MAX_SCHEDULE_DAYS, MAX_STEPS_PER_SEQUENCE } from "@/lib/email/constants
 import { leadSourceLabels, pipelineStageLabels } from "@/lib/labels";
 import { isTerminalStage, PIPELINE_STAGES } from "@/lib/pipeline";
 import { sl } from "@/lib/strings";
+import { cn } from "@/lib/utils";
 import { emailSequenceFormSchema } from "@/lib/validation/email-sequences";
 
 /** Only these can ever be a sequence's triggerStage or a step's
@@ -195,15 +198,28 @@ export function SequenceForm({ sequence, steps }: { sequence?: EmailSequence; st
               control={control}
               name="triggerType"
               render={({ field }) => (
-                <Select value={field.value} onValueChange={field.onChange}>
-                  <SelectTrigger size="sm">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="lead_created">{sl.emails.sequenceTriggerTypeLeadCreated}</SelectItem>
-                    <SelectItem value="stage_entered">{sl.emails.sequenceTriggerTypeStageEntered}</SelectItem>
-                  </SelectContent>
-                </Select>
+                <div className="flex gap-2">
+                  {(
+                    [
+                      ["lead_created", sl.emails.sequenceTriggerTypeLeadCreated],
+                      ["stage_entered", sl.emails.sequenceTriggerTypeStageEntered],
+                    ] as const
+                  ).map(([value, label]) => (
+                    <button
+                      key={value}
+                      type="button"
+                      onClick={() => field.onChange(value)}
+                      className={cn(
+                        "rounded-full border px-3.5 py-1.5 text-sm font-medium transition-colors",
+                        field.value === value
+                          ? "border-primary bg-primary text-primary-foreground"
+                          : "border-border bg-card text-muted-foreground hover:bg-muted",
+                      )}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
               )}
             />
           </div>
@@ -215,8 +231,12 @@ export function SequenceForm({ sequence, steps }: { sequence?: EmailSequence; st
                 name="triggerSource"
                 render={({ field }) => (
                   <Select value={field.value as string} onValueChange={field.onChange}>
-                    <SelectTrigger size="sm">
-                      <SelectValue />
+                    <SelectTrigger size="sm" aria-label={sl.emails.sequenceTriggerLabel}>
+                      <SelectValue>
+                        {(value: "any" | LeadSource) =>
+                          value === "any" ? sl.emails.sequenceTriggerAnySource : leadSourceLabels[value]
+                        }
+                      </SelectValue>
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="any">{sl.emails.sequenceTriggerAnySource}</SelectItem>
@@ -235,8 +255,8 @@ export function SequenceForm({ sequence, steps }: { sequence?: EmailSequence; st
                 name="triggerStage"
                 render={({ field }) => (
                   <Select value={field.value as string} onValueChange={field.onChange}>
-                    <SelectTrigger size="sm">
-                      <SelectValue />
+                    <SelectTrigger size="sm" aria-label={sl.emails.sequenceTriggerStageLabel}>
+                      <SelectValue>{(value: PipelineStage) => pipelineStageLabels[value]}</SelectValue>
                     </SelectTrigger>
                     <SelectContent>
                       {NON_TERMINAL_STAGES.map((stage) => (
@@ -251,7 +271,11 @@ export function SequenceForm({ sequence, steps }: { sequence?: EmailSequence; st
             </div>
           )}
           <div className="flex items-center gap-2">
-            <input type="checkbox" {...register("enabled")} className="size-4" />
+            <Controller
+              control={control}
+              name="enabled"
+              render={({ field }) => <Switch checked={field.value} onCheckedChange={field.onChange} />}
+            />
             <Label>{sl.emails.sequenceEnabledLabel}</Label>
           </div>
         </CardContent>
@@ -305,13 +329,11 @@ export function SequenceForm({ sequence, steps }: { sequence?: EmailSequence; st
                         const checked = conditionField.value.includes(stage);
                         return (
                           <label key={stage} className="flex items-center gap-1.5 text-sm">
-                            <input
-                              type="checkbox"
-                              className="size-4"
+                            <Checkbox
                               checked={checked}
-                              onChange={(e) => {
+                              onCheckedChange={(next) => {
                                 conditionField.onChange(
-                                  e.target.checked
+                                  next
                                     ? [...conditionField.value, stage]
                                     : conditionField.value.filter((s) => s !== stage),
                                 );

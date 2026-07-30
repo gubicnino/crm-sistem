@@ -1,3 +1,4 @@
+import { PageHeader } from "@/components/dashboard/page-header";
 import { KanbanBoard } from "@/components/pipeline/kanban-board";
 import { listLeads } from "@/db/queries/leads";
 import { pipelineStageEnum, type Lead, type PipelineStage } from "@/db/schema";
@@ -18,7 +19,7 @@ export default async function PipelinePage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <h1 className="text-xl font-semibold">{sl.pipeline.title}</h1>
+      <PageHeader title={sl.pipeline.title} />
       <KanbanBoard initialGrouped={grouped} />
     </div>
   );

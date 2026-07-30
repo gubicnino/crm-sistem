@@ -35,6 +35,7 @@ This repo contains **only** the central backend + CRM dashboard. It never render
 | Validation | Zod |
 | Forms | react-hook-form |
 | Drag & drop | dnd-kit |
+| Rich text (email step bodies) | Tiptap (`@tiptap/react`, `@tiptap/starter-kit`) |
 
 Do not add dependencies outside this list without being asked. Prefer solving with what is already here.
 
@@ -125,16 +126,18 @@ provisioning a trainer's `site_key`.
    sequence step went to which lead, `scheduled` / `sent` / `canceled`
    status. A manual cancel action must go through the same cancellation
    path as automatic cancellation (see "Follow-up emails" →
-   "Cancellation is mandatory").
+   "Cancellation is mandatory"). Two linked sub-pages reached via buttons
+   on this page, **not** separate sidebar items:
+   - **`/emails/sequences`** (+ `/new`, `/[id]`) — trainer-facing sequence
+     editor: create/edit a sequence's trigger + steps, enable/disable,
+     "apply to existing leads". See "Follow-up emails" → "Sequences are
+     trainer data, not code".
+   - **`/emails/send`** — one-off manual broadcast to a trainer-chosen set
+     of leads. See "Follow-up emails" → "Manual broadcasts".
 
 ## Data model (Drizzle schema)
 
 Core tables in `db/schema.ts`:
-
-- **`trainers`** — id, name, email, `siteKey` (public, unique, e.g. `pk_janez_8f3a2b`), `applicationQuestions` (jsonb), createdAt
-- **`leads`** — id, `trainerId`, name, email, phone, `source` (enum: `application` | `lead_magnet`), `stage` (enum), `answers` (jsonb, null for lead magnet leads), createdAt, updatedAt
-- **`notes`** — id, `trainerId`, `leadId`, body, createdAt
-- **`scheduled_emails`** — id, `trainerId`, `leadId`, `sequenceStep`, `resendEmailId`, `scheduledFor`, `status` (enum: `scheduled` | `sent` | `canceled`) — tracks every email handed to Resend so it can be canceled later
 - Auth.js tables (users, sessions, accounts) per the Drizzle adapter
 
 ### Two lead sources — this distinction drives the whole product
@@ -145,9 +148,11 @@ Core tables in `db/schema.ts`:
 | Data | Name, email + `answers` jsonb | Usually just email (+ maybe name) |
 | Temperature | Hot | Cold |
 | Enters pipeline at | `application_received` | `email_lead` |
-| Follow-up | Fast sequence: instant confirmation + booking prompt | Nurture sequence: guide, then education over days |
+| Default follow-up | "Prijave" sequence: instant confirmation + booking prompt | "Brezplačni vodič" sequence: guide, then education over days |
 
-Never collapse these into one type. Analytics, pipeline, and email sequences all branch on `source`.
+These are the two **starter sequences** seeded once per new trainer (`lib/email/default-sequences.ts`, applied by `seedDefaultSequencesForTrainer`) — a starting point the trainer can edit, disable, or add to (up to `MAX_SEQUENCES_PER_TRAINER`), not a hardcoded rule. See "Follow-up emails" → "Sequences are trainer data, not code".
+
+Never collapse the two lead sources into one type. Analytics and pipeline still branch on `source`; email sequences branch on it too by default but a trainer-defined sequence can also target "any source" or a pipeline-stage-entry trigger instead.
 
 ### Pipeline stages (enum, in order)
 
@@ -182,6 +187,8 @@ app/
     applications/       # Izpolnjene forme — application leads + their answers
     analytics/
     emails/             # scheduled/sent email visibility
+      sequences/         # trainer-facing sequence editor (list, new, [id])
+      send/               # one-off manual broadcast
     settings/
       questions/         # Vprašanja — trainer's application question builder
   api/
@@ -206,31 +213,41 @@ Two mechanisms with strictly separate jobs. Do not blur them.
 
 ### Primary: Resend `scheduled_at` — schedule the whole sequence up front
 
-When a lead is created, **immediately hand the entire sequence to Resend in that same request**, then finish. There is no queue, no worker, no per-lead cron.
+When a lead enrolls in a sequence, **immediately hand every step to Resend in that same request**, then finish. There is no queue, no worker, no per-lead cron. `lib/email/enroll.ts`'s `scheduleStepsForLead` is the shared reserve→send helptaer both enrollment paths below call.
 
 ```ts
-// on lead creation — once, then done
-for (const step of sequenceFor(lead.source)) {
-  const { data } = await resend.emails.send({
-    ...renderTemplate(step, lead),
-    scheduled_at: addDays(new Date(), step.dayOffset).toISOString(),
-  });
-  await db.insert(scheduledEmails).values({
-    trainerId: lead.trainerId,
-    leadId: lead.id,
-    sequenceStep: step.id,
-    resendEmailId: data.id,        // REQUIRED — this is the cancel handle
-    scheduledFor: ...,
-    status: "scheduled",
-  });
+// enrolling a lead into one sequence's steps — once, then done
+for (const step of steps) {
+  const { data } = await resend.emails.send(
+    { ...renderTemplate(step, lead), scheduled_at: addDays(new Date(), step.dayOffset).toISOString() },
+    { idempotencyKey: reservedRow.id }, // reservedRow.id is the scheduled_emails row minted before send
+  );
+  // reservedRow was inserted first (status: "pending") to claim the (leadId, sequenceStep, attempt)
+  // uniqueness before calling Resend; the row is then updated with resendEmailId + status: "scheduled".
 }
 ```
 
 Rules:
-- **Resend allows scheduling up to 30 days ahead.** Any sequence step beyond day 30 cannot use this mechanism — if one is ever needed, ask before building a workaround.
+- **Resend allows scheduling up to 30 days ahead.** Any step's `dayOffset` beyond day 30 cannot use this mechanism — `MAX_SCHEDULE_DAYS` (30, `lib/email/constants.ts`) is enforced by Zod at the point the trainer saves a step. If one is ever needed beyond that, ask before building a workaround.
 - **Always persist `resendEmailId`.** An email that was scheduled but whose ID was not stored can never be canceled. Treat a missing ID as a bug.
-- Sequence definitions live declaratively in `lib/email/sequences.ts`, keyed by lead `source`. Never inline sequence logic in a route handler.
-- Two distinct sequences, per the product model: fast sequence for `application` leads (instant confirmation + booking prompt), nurture sequence for `lead_magnet` leads (guide, then education).
+- Pass an **idempotency key** on every `resend.emails.send` call (the reserved `scheduled_emails` row's own id) — this is what makes the reserve→send protocol safe to retry (cron reconciler, a race at enrollment) without a double-send.
+
+### Sequences are trainer data, not code
+
+Sequences are **not** hardcoded in a file — they are rows in `email_sequences` / `email_sequence_steps`, created and edited by the trainer at `/emails/sequences` (`components/emails/sequence-form.tsx`), validated by `emailSequenceFormSchema` (`lib/validation/email-sequences.ts`) both client- and server-side.
+
+A sequence has:
+- A **trigger**: `lead_created` (optionally filtered to one `source`, or "any source"), or `stage_entered` (fires when a lead enters a specific non-terminal pipeline stage). Terminal stages (`client`, `lost`) can never be a trigger — that transition already has a mandatory, competing action (cancellation, below).
+- **Steps** (`useFieldArray`-managed, reorderable): a `dayOffset` (0–30), a subject, a Tiptap rich-text `body`, and an optional `sendOnlyIfStage` condition (the step only sends while the lead is still in one of the listed non-terminal stages — enforced by cancellation, not by a send-time check, since Resend has already accepted the request by the time the condition would need re-checking).
+- Two starter sequences are seeded per new trainer (see "Two lead sources" above) but a trainer can create up to `MAX_SEQUENCES_PER_TRAINER` (5), each with up to `MAX_STEPS_PER_SEQUENCE` (15) steps.
+
+Editing an already-enrolled sequence does **not** retroactively touch leads already mid-sequence unless the trainer explicitly clicks "Uporabi za obstoječe stranke" (`applySequenceToExistingLeadsAction` → `lib/email/reapply.ts`), which re-enrolls them at a bumped `attempt` number (capped at `MAX_APPLY_TO_EXISTING_LEADS_PER_RUN`, 200 — exceeding it is a bug signal, not silently truncated).
+
+Never inline sequence/step logic in a route handler or server action — go through `db/queries/email-sequences.ts` and `lib/email/enroll.ts`.
+
+### Manual broadcasts
+
+Separate from sequences: a trainer can send one **one-off** email to a trainer-chosen set of leads at `/emails/send`, capped at `MAX_BROADCAST_RECIPIENTS` (500). Creates an `email_broadcasts` row plus one `scheduled_emails` row per recipient (`kind: "broadcast"`). Immutable once created — no edit path, only cancellation through the same `scheduled_emails` rows. The compose form mints a `clientRequestId` once per compose session up front specifically so a double-click or a retried request resolves to the same broadcast instead of double-sending — never regenerate it per submit attempt.
 
 ### Cancellation is mandatory, not optional
 
@@ -241,6 +258,8 @@ Cancel on:
 - Lead moves to `lost` stage
 - Unsubscribe
 - Trainer manually stops the sequence
+
+Additionally, on **any** non-terminal stage change, `syncScheduledEmailsForLeadStage` (`lib/email/cancel.ts`) cancels any not-yet-sent step whose `sendOnlyIfStage` condition excludes the lead's new stage — this is what makes a per-step stage condition (above) actually take effect: there is no send-time hook to check it, so exclusion is enforced by canceling the row before it would have sent.
 
 Without this, a paying client gets "still thinking about it?" a week after signing up. This is the single most damaging bug this system can produce — hold it to a high standard.
 
@@ -307,3 +326,4 @@ Do not silently "improve" any of these — they are deliberate:
 - The two-lead-source split (`application` vs `lead_magnet`)
 - Resend for sequence timing, cron for housekeeping only
 - Persisting `resendEmailId` and canceling on conversion
+- The sequence/step/broadcast caps (`MAX_SEQUENCES_PER_TRAINER`, `MAX_STEPS_PER_SEQUENCE`, `MAX_APPLY_TO_EXISTING_LEADS_PER_RUN`, `MAX_BROADCAST_RECIPIENTS`) — product limits, not technical ones; raising one silently hides a bug signal instead of surfacing it

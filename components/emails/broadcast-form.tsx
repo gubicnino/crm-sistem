@@ -7,6 +7,7 @@ import { RichTextEditor } from "@/components/emails/rich-text-editor";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -123,11 +124,10 @@ export function BroadcastForm({ leads }: { leads: Lead[] }) {
                 {leads.map((lead) => (
                   <TableRow key={lead.id}>
                     <TableCell>
-                      <input
-                        type="checkbox"
-                        className="size-4"
+                      <Checkbox
+                        aria-label={lead.name ?? lead.email}
                         checked={selected.has(lead.id)}
-                        onChange={() => toggleLead(lead.id)}
+                        onCheckedChange={() => toggleLead(lead.id)}
                       />
                     </TableCell>
                     <TableCell>{lead.name ?? lead.email}</TableCell>

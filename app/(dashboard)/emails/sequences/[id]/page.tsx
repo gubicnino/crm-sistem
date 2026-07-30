@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { PageHeader } from "@/components/dashboard/page-header";
 import { ApplyToExistingButton } from "@/components/emails/apply-to-existing-button";
 import { Button } from "@/components/ui/button";
 import { SequenceForm } from "@/components/emails/sequence-form";
@@ -17,15 +18,12 @@ export default async function EditEmailSequencePage({ params }: { params: Promis
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold">{sl.emails.sequenceEditTitle}</h1>
-        <div className="flex gap-2">
-          <ApplyToExistingButton sequenceId={id} enrolledCount={enrolledLeads.length} />
-          <Button variant="outline" size="sm" render={<Link href="/emails/sequences" />}>
-            {sl.emails.sequenceBackToList}
-          </Button>
-        </div>
-      </div>
+      <PageHeader title={sl.emails.sequenceEditTitle}>
+        <ApplyToExistingButton sequenceId={id} enrolledCount={enrolledLeads.length} />
+        <Button variant="outline" size="sm" render={<Link href="/emails/sequences" />}>
+          {sl.emails.sequenceBackToList}
+        </Button>
+      </PageHeader>
       <SequenceForm sequence={result.sequence} steps={result.steps} />
     </div>
   );

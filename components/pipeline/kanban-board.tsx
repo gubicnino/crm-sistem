@@ -4,9 +4,11 @@ import { DndContext, type DragEndEvent } from "@dnd-kit/core";
 import { useOptimistic, useTransition } from "react";
 import { toast } from "sonner";
 import { KanbanColumn } from "@/components/pipeline/kanban-column";
+import { LostPanel } from "@/components/pipeline/lost-panel";
 import { pipelineStageEnum, type Lead, type PipelineStage } from "@/db/schema";
 import { moveLeadStageAction } from "@/lib/actions/leads";
 import { pipelineStageLabels } from "@/lib/labels";
+import { ACTIVE_PIPELINE_STAGES } from "@/lib/pipeline";
 import { sl } from "@/lib/strings";
 
 type GroupedLeads = Record<PipelineStage, Lead[]>;
@@ -63,16 +65,19 @@ export function KanbanBoard({ initialGrouped }: { initialGrouped: GroupedLeads }
 
   return (
     <DndContext onDragEnd={handleDragEnd}>
-      <div className="flex gap-4 overflow-x-auto pb-4">
-        {pipelineStageEnum.enumValues.map((stage) => (
-          <KanbanColumn
-            key={stage}
-            stage={stage}
-            label={pipelineStageLabels[stage]}
-            leads={grouped[stage]}
-            disabled={isPending}
-          />
-        ))}
+      <div className="flex flex-col gap-4">
+        <div className="flex gap-4 overflow-x-auto pb-1">
+          {ACTIVE_PIPELINE_STAGES.map((stage) => (
+            <KanbanColumn
+              key={stage}
+              stage={stage}
+              label={pipelineStageLabels[stage]}
+              leads={grouped[stage]}
+              disabled={isPending}
+            />
+          ))}
+        </div>
+        <LostPanel leads={grouped.lost} disabled={isPending} />
       </div>
     </DndContext>
   );

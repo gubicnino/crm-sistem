@@ -3,6 +3,7 @@
 import { useDroppable } from "@dnd-kit/core";
 import { LeadCard } from "@/components/pipeline/lead-card";
 import type { Lead, PipelineStage } from "@/db/schema";
+import { pipelineStageDotClasses } from "@/lib/badge-styles";
 import { cn } from "@/lib/utils";
 
 export function KanbanColumn({
@@ -26,9 +27,12 @@ export function KanbanColumn({
         isOver && "bg-muted/60",
       )}
     >
-      <div className="flex items-center justify-between px-1">
+      <div className="flex items-center gap-2 px-1">
+        <span className={cn("size-2 shrink-0 rounded-full", pipelineStageDotClasses[stage])} />
         <h2 className="text-sm font-medium">{label}</h2>
-        <span className="text-xs text-muted-foreground">{leads.length}</span>
+        <span className="ml-auto rounded-full bg-card px-1.5 py-0.5 text-[11px] text-muted-foreground ring-1 ring-foreground/10">
+          {leads.length}
+        </span>
       </div>
       <div className="flex flex-col gap-2">
         {leads.map((lead) => (

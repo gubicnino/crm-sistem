@@ -36,8 +36,8 @@ export function StageActions({ leadId, currentStage }: { leadId: string; current
   return (
     <div className="flex items-center gap-2">
       <Select value={currentStage} onValueChange={handleStageChange} disabled={isPending}>
-        <SelectTrigger size="sm">
-          <SelectValue />
+        <SelectTrigger size="sm" aria-label={sl.leads.stageLabel}>
+          <SelectValue>{(value: PipelineStage) => pipelineStageLabels[value]}</SelectValue>
         </SelectTrigger>
         <SelectContent>
           {pipelineStageEnum.enumValues.map((stage) => (

@@ -27,6 +27,7 @@
   --color-input: var(--input);
   --color-border: var(--border);
   --color-destructive: var(--destructive);
+  --color-destructive-tint: var(--destructive-tint);
   --color-accent-foreground: var(--accent-foreground);
   --color-accent: var(--accent);
   --color-muted-foreground: var(--muted-foreground);
@@ -35,10 +36,32 @@
   --color-secondary: var(--secondary);
   --color-primary-foreground: var(--primary-foreground);
   --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-tint: var(--primary-tint);
   --color-popover-foreground: var(--popover-foreground);
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
+
+  /* Brand palette additions for the mockup-matching restyle — see CLAUDE.md
+     and lib/badge-styles.ts, the sole consumer of the stage/hot/success set. */
+  --color-stage-1: var(--stage-1);
+  --color-stage-2: var(--stage-2);
+  --color-stage-3: var(--stage-3);
+  --color-stage-4: var(--stage-4);
+  /* Darker, text-safe siblings of stage-1..4 — the vivid ramp above fails
+     WCAG 4.5:1 as badge text over its own /15 tint background (verified via
+     Lighthouse's color-contrast audit); dots/charts keep using stage-1..4. */
+  --color-stage-1-foreground: var(--stage-1-foreground);
+  --color-stage-2-foreground: var(--stage-2-foreground);
+  --color-stage-3-foreground: var(--stage-3-foreground);
+  --color-stage-4-foreground: var(--stage-4-foreground);
+  --color-hot: var(--hot);
+  --color-hot-tint: var(--hot-tint);
+  --color-hot-foreground: var(--hot-foreground);
+  --color-success: var(--success);
+  --color-success-tint: var(--success-tint);
+
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
@@ -49,72 +72,123 @@
 }
 
 :root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
+  --background: oklch(0.982 0.003 106.4); /* #f9f9f7 */
+  --foreground: oklch(0.222 0.006 91.6); /* #1c1b18 */
+  --card: oklch(0.991 0.001 106.4); /* #fcfcfb */
+  --card-foreground: oklch(0.222 0.006 91.6);
+  --popover: oklch(1 0 89.9); /* #ffffff */
+  --popover-foreground: oklch(0.222 0.006 91.6);
+  --primary: oklch(0.555 0.163 255.5); /* #2472ce — darkened from #2a78d6, white text was 4.42:1, now 4.8:1 */
+  --primary-foreground: oklch(1 0 89.9);
+  --primary-hover: oklch(0.48 0.142 256.1); /* #1c5cab */
+  --primary-tint: oklch(0.956 0.015 257.2); /* #eaf1fb */
+  --secondary: oklch(0.951 0.008 98.9); /* #f0efe9 */
+  --secondary-foreground: oklch(0.222 0.006 91.6);
+  --muted: oklch(0.951 0.008 98.9);
+  --muted-foreground: oklch(0.523 0.011 100.1); /* #6b6a63 */
+  --accent: oklch(0.951 0.008 98.9);
+  --accent-foreground: oklch(0.222 0.006 91.6);
+  --destructive: oklch(0.545 0.186 25.2); /* #c53032, darkened from #d03b3b — text-destructive on destructive-tint was 4.19:1, now 4.75:1 */
+  --destructive-tint: oklch(0.955 0.016 22.1); /* #fbeceb */
+  --border: oklch(0.909 0.011 95.2); /* #e3e1d9 */
+  --input: oklch(0.909 0.011 95.2);
+  --ring: oklch(0.555 0.163 255.5 / 50%);
+
+  /* Sequential blue stage ramp (light -> dark), used for pipeline-stage dots/pills. */
+  --stage-1: oklch(0.764 0.097 253.2); /* #86b6ef email_lead */
+  --stage-2: oklch(0.622 0.161 255.1); /* #3987e5 application_received */
+  --stage-3: oklch(0.527 0.15 255.9); /* #256abf contacted */
+  --stage-4: oklch(0.385 0.118 256.7); /* #104281 client */
+
+  /* Darker text-safe siblings of stage-1..4 (badge text only — see
+     lib/badge-styles.ts); stage-1..4 stay vivid for dots/charts. */
+  --stage-1-foreground: oklch(0.48 0.097 253.2); /* #335f93 */
+  --stage-2-foreground: oklch(0.48 0.161 255.1); /* #005bb5 */
+  --stage-3-foreground: oklch(0.48 0.15 255.9); /* #135cb0 */
+  --stage-4-foreground: oklch(0.48 0.118 256.7); /* #2d5d9f */
+
+  --hot: oklch(0.671 0.175 40.6); /* #eb6834 — application/"hot" source */
+  --hot-tint: oklch(0.954 0.021 47); /* #fdece4 */
+  --hot-foreground: oklch(0.547 0.149 38.8); /* #b64a24 */
+
+  --success: oklch(0.512 0.169 142.6); /* #0a7d0a — sent/enabled states */
+  --success-tint: oklch(0.957 0.027 145.4); /* #e6f6e6 */
+
+  --chart-1: oklch(0.764 0.097 253.2);
+  --chart-2: oklch(0.622 0.161 255.1);
+  --chart-3: oklch(0.527 0.15 255.9);
+  --chart-4: oklch(0.385 0.118 256.7);
+  --chart-5: oklch(0.671 0.175 40.6);
   --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  --sidebar: oklch(0.991 0.001 106.4);
+  --sidebar-foreground: oklch(0.222 0.006 91.6);
+  --sidebar-primary: oklch(0.555 0.163 255.5);
+  --sidebar-primary-foreground: oklch(1 0 89.9);
+  /* Same token drives both hover and the active nav item (see
+     components/ui/sidebar.tsx's data-active:bg-sidebar-accent) — making it
+     the blue tint keeps hover and active visually consistent without
+     fighting CSS specificity via a per-item className override. */
+  --sidebar-accent: oklch(0.956 0.015 257.2); /* #eaf1fb */
+  --sidebar-accent-foreground: oklch(0.48 0.142 256.1); /* #1c5cab */
+  --sidebar-border: oklch(0.909 0.011 95.2);
+  --sidebar-ring: oklch(0.555 0.163 255.5 / 50%);
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  --background: oklch(0.209 0.004 264.5); /* #17181a */
+  --foreground: oklch(0.958 0.007 97.4); /* #f2f1ec */
+  --card: oklch(0.239 0.006 91.6); /* #201f1c */
+  --card-foreground: oklch(0.958 0.007 97.4);
+  --popover: oklch(0.239 0.006 91.6);
+  --popover-foreground: oklch(0.958 0.007 97.4);
+  --primary: oklch(0.622 0.161 255.1); /* #3987e5 */
+  --primary-foreground: oklch(0.209 0.004 264.5);
+  --primary-hover: oklch(0.671 0.136 253.8); /* #5598e7 */
+  --primary-tint: oklch(0.319 0.058 257.6); /* #1f3350 */
+  --secondary: oklch(0.285 0.006 91.6); /* #2b2a27 */
+  --secondary-foreground: oklch(0.958 0.007 97.4);
+  --muted: oklch(0.285 0.006 91.6);
+  --muted-foreground: oklch(0.689 0.012 95.2); /* #9d9b93 */
+  --accent: oklch(0.285 0.006 91.6);
+  --accent-foreground: oklch(0.958 0.007 97.4);
+  --destructive: oklch(0.669 0.159 22.3); /* #e66767 */
+  --destructive-tint: oklch(0.285 0.035 19.5); /* #3a2323 */
+  --border: oklch(0.333 0.012 93.8); /* #38362f */
+  --input: oklch(0.333 0.012 93.8);
+  --ring: oklch(0.622 0.161 255.1 / 50%);
+
+  --stage-1: oklch(0.671 0.136 253.8); /* #5598e7 */
+  --stage-2: oklch(0.622 0.161 255.1); /* #3987e5 */
+  --stage-3: oklch(0.575 0.163 255.5); /* #2a78d6 */
+  --stage-4: oklch(0.433 0.128 256.5); /* #184f95 */
+
+  /* Lighter text-safe siblings of stage-1..4 for dark badge text (contrast
+     runs the opposite direction from :root — text must be lighter here). */
+  --stage-1-foreground: oklch(0.68 0.136 253.8); /* #589bea */
+  --stage-2-foreground: oklch(0.68 0.161 255.1); /* #4c99f9 */
+  --stage-3-foreground: oklch(0.68 0.163 255.5); /* #4c99fa */
+  --stage-4-foreground: oklch(0.68 0.128 256.5); /* #629ae6 */
+
+  --hot: oklch(0.622 0.173 40.1); /* #d95926 */
+  --hot-tint: oklch(0.3 0.034 62.2); /* #3a2a1c */
+  --hot-foreground: oklch(0.79 0.106 54.3); /* #f0a878 */
+
+  --success: oklch(0.621 0.207 142.6); /* #0ca30c */
+  --success-tint: oklch(0.296 0.045 148.7); /* #1c3320 */
+
+  --chart-1: oklch(0.671 0.136 253.8);
+  --chart-2: oklch(0.622 0.161 255.1);
+  --chart-3: oklch(0.575 0.163 255.5);
+  --chart-4: oklch(0.433 0.128 256.5);
+  --chart-5: oklch(0.622 0.173 40.1);
+  --sidebar: oklch(0.239 0.006 91.6);
+  --sidebar-foreground: oklch(0.958 0.007 97.4);
+  --sidebar-primary: oklch(0.622 0.161 255.1);
+  --sidebar-primary-foreground: oklch(0.209 0.004 264.5);
+  --sidebar-accent: oklch(0.319 0.058 257.6); /* #1f3350 */
+  --sidebar-accent-foreground: oklch(0.671 0.136 253.8); /* #5598e7 */
+  --sidebar-border: oklch(0.333 0.012 93.8);
+  --sidebar-ring: oklch(0.622 0.161 255.1 / 50%);
 }
 
 @layer base {

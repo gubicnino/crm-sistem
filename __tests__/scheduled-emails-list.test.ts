@@ -7,8 +7,12 @@ vi.mock("@/db", () => ({
     select: () => ({
       from: () => ({
         innerJoin: () => ({
-          where: () => ({
-            orderBy: () => orderByMock(),
+          leftJoin: () => ({
+            leftJoin: () => ({
+              where: () => ({
+                orderBy: () => orderByMock(),
+              }),
+            }),
           }),
         }),
       }),
