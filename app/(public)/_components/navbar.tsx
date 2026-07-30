@@ -77,7 +77,7 @@ export function Navbar() {
             render={<a href="#kontakt" />}
             className="bg-hot text-white hover:bg-hot/90"
           >
-            Povprašuj za dostop
+            Pošlji povpraševanje
           </Button>
         </div>
 
@@ -124,7 +124,7 @@ export function Navbar() {
                   />
                 }
               >
-                Povprašuj za dostop
+                Pošlji povpraševanje
               </SheetClose>
             </div>
           </SheetContent>

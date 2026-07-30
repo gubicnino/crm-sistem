@@ -41,7 +41,7 @@ export function Pricing() {
             render={<a href="#kontakt" />}
             className="mt-8 w-full bg-hot text-white hover:bg-hot/90"
           >
-            Povprašuj zdaj
+            Pošlji povpraševanje
           </Button>
         </div>
       </Container>

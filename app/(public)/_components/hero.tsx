@@ -1,9 +1,9 @@
 "use client";
 
+import { Container } from "@/app/(public)/_components/container";
+import { Button } from "@/components/ui/button";
 import { motion, type Variants } from "framer-motion";
 import Image from "next/image";
-import { Button } from "@/components/ui/button";
-import { Container } from "@/app/(public)/_components/container";
 
 const EASE = [0.16, 1, 0.3, 1] as const;
 
@@ -19,14 +19,14 @@ const item: Variants = {
 
 export function Hero() {
   return (
-    <section className="bg-foreground text-background">
-      <Container className="grid gap-10 py-20 lg:grid-cols-[1.1fr_1fr] lg:items-center lg:py-28">
+    <section className="flex min-h-screen items-center bg-foreground text-background">
+      <Container className="grid w-full gap-10 py-24 lg:grid-cols-[1.1fr_1fr] lg:items-center">
         <motion.div variants={container} initial="hidden" animate="show">
           <motion.h1
             variants={item}
             className="text-4xl leading-[1.1] font-semibold tracking-tight text-balance sm:text-5xl lg:text-6xl"
           >
-            Od Instagram sledilca do plačljive stranke — brez izgubljenih leadov.
+            Od ogleda do plačljive stranke.
           </motion.h1>
           <motion.p variants={item} className="mt-6 max-w-xl text-lg text-background/70">
             Trener Growth Sistem je celoten sistem za pridobivanje strank za osebne trenerje in
@@ -40,7 +40,7 @@ export function Hero() {
               render={<a href="#kontakt" />}
               className="bg-hot text-white hover:bg-hot/90"
             >
-              Povprašuj za dostop →
+              Pošlji povpraševanje
             </Button>
             <p className="text-sm text-background/60">
               Trenutno sprejemamo omejeno število trenerjev.
