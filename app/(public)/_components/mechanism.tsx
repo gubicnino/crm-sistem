@@ -10,7 +10,7 @@ const steps = [
 
 export function Mechanism() {
   return (
-    <section className="py-20 lg:py-28">
+    <section id="kako-deluje" className="scroll-mt-24 py-20 lg:py-28">
       <Container>
         <span className="text-sm font-medium tracking-wide text-hot uppercase">Kako deluje</span>
         <h2 className="mt-3 max-w-2xl text-3xl font-semibold tracking-tight sm:text-4xl">

@@ -59,7 +59,7 @@ const bonuses = [
 
 export function BonusStack() {
   return (
-    <section className="py-20 lg:py-28">
+    <section id="bonusi" className="scroll-mt-24 py-20 lg:py-28">
       <Container className="max-w-3xl">
         <span className="text-sm font-medium tracking-wide text-hot uppercase">Bonusi</span>
         <h2 className="mt-3 text-3xl font-semibold tracking-tight sm:text-4xl">

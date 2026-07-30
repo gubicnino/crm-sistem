@@ -14,7 +14,7 @@ const includes = [
 
 export function Pricing() {
   return (
-    <section className="bg-muted/40 py-20 lg:py-28">
+    <section id="cenik" className="scroll-mt-24 bg-muted/40 py-20 lg:py-28">
       <Container className="max-w-3xl">
         <div className="rounded-2xl bg-card p-8 ring-1 ring-foreground/10 sm:p-10">
           <div className="flex flex-col justify-between gap-6 sm:flex-row sm:items-center">
