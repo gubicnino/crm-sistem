@@ -19,7 +19,7 @@ export function ContactFooter() {
     formState: { errors, isSubmitting },
   } = useForm<ContactInput>({ resolver: zodResolver(contactSchema) });
 
-  function onSubmit(_values: ContactInput) {
+  function onSubmit() {
     // UI-only for now — no backend endpoint yet, see
     // docs/superpowers/specs/2026-07-30-public-landing-page-design.md.
     setSubmitted(true);
