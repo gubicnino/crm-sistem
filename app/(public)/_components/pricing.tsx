@@ -1,6 +1,8 @@
 import { Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Container } from "@/app/(public)/_components/container";
+import { MotionPress } from "@/app/(public)/_components/motion-press";
+import { StaggerList, StaggerListItem } from "@/app/(public)/_components/stagger";
 
 const includes = [
   "Spletna stran",
@@ -27,22 +29,24 @@ export function Pricing() {
               </p>
             </div>
           </div>
-          <ul className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3">
+          <StaggerList className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3">
             {includes.map((item) => (
-              <li key={item} className="flex items-center gap-2 text-sm">
+              <StaggerListItem key={item} className="flex items-center gap-2 text-sm">
                 <Check className="size-4 shrink-0 text-success" />
                 {item}
-              </li>
+              </StaggerListItem>
             ))}
-          </ul>
-          <Button
-            size="lg"
-            nativeButton={false}
-            render={<a href="#kontakt" />}
-            className="mt-8 w-full bg-hot text-white hover:bg-hot/90"
-          >
-            Pošlji povpraševanje
-          </Button>
+          </StaggerList>
+          <MotionPress className="mt-8">
+            <Button
+              size="lg"
+              nativeButton={false}
+              render={<a href="#kontakt" />}
+              className="w-full bg-hot text-white hover:bg-hot/90"
+            >
+              Pošlji povpraševanje
+            </Button>
+          </MotionPress>
         </div>
       </Container>
     </section>

@@ -1,5 +1,6 @@
 import { ArrowRight, MessageCircle, Inbox, Kanban, HandCoins } from "lucide-react";
 import { Container } from "@/app/(public)/_components/container";
+import { Stagger, StaggerItem } from "@/app/(public)/_components/stagger";
 
 const steps = [
   { icon: MessageCircle, title: "Promet", desc: "Obiskovalci s tvojega Instagrama, TikToka ali spletne strani." },
@@ -16,9 +17,9 @@ export function Mechanism() {
         <h2 className="mt-3 max-w-2xl text-3xl font-semibold tracking-tight sm:text-4xl">
           Od povpraševanja do stranke, samodejno
         </h2>
-        <div className="mt-12 grid gap-6 lg:grid-cols-4 lg:gap-4">
+        <Stagger className="mt-12 grid gap-6 lg:grid-cols-4 lg:gap-4">
           {steps.map((step, i) => (
-            <div key={step.title} className="flex items-start gap-4 lg:flex-col lg:items-start">
+            <StaggerItem key={step.title} className="flex items-start gap-4 lg:flex-col lg:items-start">
               <div className="flex items-center gap-3 lg:flex-col lg:items-start">
                 <div className="flex size-12 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
                   <step.icon className="size-6" />
@@ -31,9 +32,9 @@ export function Mechanism() {
                 <h3 className="font-semibold">{step.title}</h3>
                 <p className="mt-1 text-sm text-muted-foreground">{step.desc}</p>
               </div>
-            </div>
+            </StaggerItem>
           ))}
-        </div>
+        </Stagger>
       </Container>
     </section>
   );

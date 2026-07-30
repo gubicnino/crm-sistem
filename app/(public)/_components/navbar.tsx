@@ -13,6 +13,7 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { Container } from "@/app/(public)/_components/container";
+import { MotionPress } from "@/app/(public)/_components/motion-press";
 import { cn } from "@/lib/utils";
 
 const navLinks = [
@@ -71,14 +72,16 @@ export function Navbar() {
         </nav>
 
         <div className="hidden md:block">
-          <Button
-            size="sm"
-            nativeButton={false}
-            render={<a href="#kontakt" />}
-            className="bg-hot text-white hover:bg-hot/90"
-          >
-            Pošlji povpraševanje
-          </Button>
+          <MotionPress>
+            <Button
+              size="sm"
+              nativeButton={false}
+              render={<a href="#kontakt" />}
+              className="bg-hot text-white hover:bg-hot/90"
+            >
+              Pošlji povpraševanje
+            </Button>
+          </MotionPress>
         </div>
 
         <Sheet>

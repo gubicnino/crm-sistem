@@ -1,6 +1,7 @@
 "use client";
 
 import { Container } from "@/app/(public)/_components/container";
+import { MotionPress } from "@/app/(public)/_components/motion-press";
 import { Button } from "@/components/ui/button";
 import { motion, type Variants } from "framer-motion";
 import Image from "next/image";
@@ -34,14 +35,16 @@ export function Hero() {
             postanejo plačljive stranke.
           </motion.p>
           <motion.div variants={item} className="mt-8 flex flex-col items-start gap-3 sm:flex-row sm:items-center">
-            <Button
-              size="lg"
-              nativeButton={false}
-              render={<a href="#kontakt" />}
-              className="bg-hot text-white hover:bg-hot/90"
-            >
-              Pošlji povpraševanje
-            </Button>
+            <MotionPress>
+              <Button
+                size="lg"
+                nativeButton={false}
+                render={<a href="#kontakt" />}
+                className="bg-hot text-white hover:bg-hot/90"
+              >
+                Pošlji povpraševanje
+              </Button>
+            </MotionPress>
             <p className="text-sm text-background/60">
               Trenutno sprejemamo omejeno število trenerjev.
             </p>
