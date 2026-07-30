@@ -1,10 +1,25 @@
-// Placeholder landing page. Real marketing content is out of scope for this
-// build-out (see the plan doc) — this exists so `/` isn't a 404.
+import { AudienceFit } from "@/app/(public)/_components/audience-fit";
+import { BonusStack } from "@/app/(public)/_components/bonus-stack";
+import { ContactFooter } from "@/app/(public)/_components/contact-footer";
+import { Faq } from "@/app/(public)/_components/faq";
+import { Guarantee } from "@/app/(public)/_components/guarantee";
+import { Hero } from "@/app/(public)/_components/hero";
+import { Mechanism } from "@/app/(public)/_components/mechanism";
+import { Pricing } from "@/app/(public)/_components/pricing";
+import { ValueStack } from "@/app/(public)/_components/value-stack";
+
 export default function Home() {
   return (
-    <main className="flex flex-1 flex-col items-center justify-center gap-2 p-8 text-center">
-      <h1 className="text-2xl font-semibold">Trener Growth Sistem</h1>
-      <p className="text-muted-foreground">CRM za osebne trenerje.</p>
+    <main>
+      <Hero />
+      <Mechanism />
+      <AudienceFit />
+      <BonusStack />
+      <ValueStack />
+      <Guarantee />
+      <Pricing />
+      <Faq />
+      <ContactFooter />
     </main>
   );
 }
