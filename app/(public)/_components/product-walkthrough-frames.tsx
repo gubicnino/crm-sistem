@@ -1,12 +1,13 @@
 "use client";
 
-import { motion, useReducedMotion, type Transition } from "framer-motion";
+import { AnimatePresence, motion, useReducedMotion, type Transition } from "framer-motion";
 import { type ReactNode, useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import type { LeadSource, PipelineStage } from "@/db/schema";
 import { leadSourceBadgeClasses, pipelineStageDotClasses } from "@/lib/badge-styles";
 import { avatarTintClass, initials } from "@/lib/display";
 import { leadSourceLabels, pipelineStageLabels } from "@/lib/labels";
+import { CheckCircle2, GripVertical } from "lucide-react";
 
 const EASE = [0.16, 1, 0.3, 1] as const;
 
@@ -187,5 +188,116 @@ export function OrganizeFrame({ isActive }: { isActive: boolean }) {
         </div>
       </div>
     </AppFrame>
+  );
+}
+
+interface KanbanCard {
+  name: string;
+  email: string;
+}
+
+const KANBAN_CARD: KanbanCard = { name: "Nika Kralj", email: "nika.kralj@example.com" };
+const KANBAN_FILLERS: Partial<Record<PipelineStage, KanbanCard[]>> = {
+  contacted: [{ name: "Maja Novak", email: "maja.novak@example.com" }],
+  client: [{ name: "Rok Kovačič", email: "rok.kovacic@example.com" }],
+};
+const KANBAN_COLUMNS: readonly PipelineStage[] = ["application_received", "contacted", "client"];
+
+type KanbanStage = "col-1" | "col-2" | "col-3" | "hold";
+const KANBAN_STAGES: readonly KanbanStage[] = ["col-1", "col-2", "col-3", "hold"];
+const KANBAN_DURATIONS: Record<KanbanStage, number> = { "col-1": 900, "col-2": 1000, "col-3": 1000, hold: 1300 };
+const KANBAN_COLUMN_FOR_STAGE: Record<KanbanStage, PipelineStage> = {
+  "col-1": "application_received",
+  "col-2": "contacted",
+  "col-3": "client",
+  hold: "client",
+};
+
+export function KanbanFrame({ isActive }: { isActive: boolean }) {
+  const reduceMotion = useReducedMotion() ?? false;
+  const { stage } = useStageLoop(KANBAN_STAGES, KANBAN_DURATIONS, isActive);
+  const cardColumn = KANBAN_COLUMN_FOR_STAGE[stage];
+  const showSuccess = stage === "col-3" || stage === "hold";
+
+  return (
+    <AppFrame>
+      <div className="flex h-full flex-col gap-1.5 px-4 py-3">
+        <p className="text-[11px] font-medium text-muted-foreground">Kanban pregled</p>
+        <div className="grid grow grid-cols-3 gap-1.5">
+          {KANBAN_COLUMNS.map((col) => {
+            const fillers = KANBAN_FILLERS[col] ?? [];
+            const cardHere = cardColumn === col;
+            return (
+              <div key={col} className="flex flex-col gap-1 rounded-md bg-muted/40 p-1.5">
+                <div className="flex items-center gap-1">
+                  <span className={cn("size-1.5 shrink-0 rounded-full", pipelineStageDotClasses[col])} />
+                  <span className="truncate text-[7.5px] font-medium text-muted-foreground">
+                    {pipelineStageLabels[col]}
+                  </span>
+                </div>
+                <div className="flex flex-col gap-1">
+                  {fillers.map((card) => (
+                    <div key={card.email} className="rounded-md border bg-background px-1.5 py-1">
+                      <KanbanCardBody card={card} />
+                    </div>
+                  ))}
+                  <AnimatePresence>
+                    {cardHere && (
+                      <motion.div
+                        layoutId="walkthrough-kanban-card"
+                        className="relative rounded-md border bg-background px-1.5 py-1 ring-1 ring-primary/30"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={{
+                          layout: withReducedMotion(reduceMotion, { duration: 0.8, ease: EASE }),
+                          opacity: { duration: 0.3 },
+                        }}
+                      >
+                        <KanbanCardBody card={KANBAN_CARD} success={showSuccess} />
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </AppFrame>
+  );
+}
+
+function KanbanCardBody({ card, success }: { card: KanbanCard; success?: boolean }) {
+  return (
+    <div className="relative">
+      <div className="flex items-center justify-between gap-1">
+        <div className="flex min-w-0 items-center gap-1">
+          <span
+            className={cn(
+              "flex size-4 shrink-0 items-center justify-center rounded-full text-[7px] font-medium",
+              avatarTintClass(card.email),
+            )}
+          >
+            {initials(card.name, card.email)}
+          </span>
+          <span className="truncate text-[8px] font-medium">{card.name}</span>
+        </div>
+        <GripVertical className="size-2.5 shrink-0 text-muted-foreground/40" />
+      </div>
+      <AnimatePresence>
+        {success && (
+          <motion.span
+            className="absolute -top-1 -right-1 text-success"
+            initial={{ opacity: 0, scale: 0.4 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.4 }}
+          >
+            <CheckCircle2 className="size-3" />
+          </motion.span>
+        )}
+      </AnimatePresence>
+    </div>
   );
 }
