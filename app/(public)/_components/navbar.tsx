@@ -17,6 +17,7 @@ import { MotionPress } from "@/app/(public)/_components/motion-press";
 import { cn } from "@/lib/utils";
 
 const navLinks = [
+  { href: "#sistem", label: "Sistem" },
   { href: "#kako-deluje", label: "Kako deluje" },
   { href: "#produkt", label: "Produkt" },
   { href: "#bonusi", label: "Bonusi" },
