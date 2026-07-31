@@ -9,14 +9,15 @@ The hero section (`app/(public)/_components/hero.tsx`) currently shows a static 
 
 ## Story (what the loop shows, in order)
 
-1. A small "browser window" mock renders a 5-question application form (mirrors a real trainer's public form: text, email, segmented-pill select, segmented-pill select, dropdown — deliberately varied field types).
-2. Fields fill in automatically, staggered, like a fast confident user typing.
-3. Submit button pulses on "click".
-4. A compact lead chip (avatar + name) launches from the button and shared-element-transitions (`layoutId`) into a CRM lead-detail panel.
-5. The detail panel fills in with the answers just "entered" in the form, plus a stage badge — demonstrating answers are captured automatically, not re-typed.
-6. A small envelope icon peels off the detail card and flies off — implies the automatic follow-up email sequence firing, kept visually distinct from the main lead-chip transition so it doesn't compete with it.
-7. Scene crossfades to a 4-column kanban board using the product's real stage labels/colors (`lib/labels.ts`, `lib/badge-styles.ts`). Since this mock form is a full application (not just an email opt-in), the lead card appears directly in **Prijava prejeta** (matching the real `application` → `application_received` dedup rule in `db/queries/leads.ts` — it does not pass through "E-poštni kontakt" first), then hops via `layoutId` through **Kontaktiran** → **Stranka**, with a small success pop on arrival.
-8. Hold briefly on the end state, fade out, loop back to step 1.
+The demo is a live recreation of the actual `npm run seed:demo` account — same 6 application questions (`scripts/seed-demo.ts`'s `updateApplicationQuestions` call), same seeded lead ("Ana Kovač", `ana.kovac@example.com`, answers `{ goal: "Shujšati 5 kg", experience: "Manj kot leto" }`). Not invented copy, so it can't visually drift from what a trainer's real form/CRM look like.
+
+1. A small "browser window" mock renders the 6 real seeded questions (text, select, text, textarea, select, checkbox — the real type mix, not a simplified one). Only the two she actually answered (goal, experience) animate in with values; the other four stay visibly present but empty, matching a real optional-field submission.
+2. Submit button pulses on "click".
+3. A compact lead chip (avatar + name) launches from the button toward the CRM panel. The CRM screen itself only fades in once the chip arrives (not mid-flight) — avoids the chip and the full detail header being visible/overlapping at the same time.
+4. The CRM screen mirrors the real `/leads/[id]` layout (`app/(dashboard)/leads/[id]/page.tsx`): name + "Prijava · Prijava prejeta" subtitle, small `Kontaktni podatki` and `Odgovori` cards using the exact `lib/strings.ts` labels, answers matching the seeded lead.
+5. A small envelope icon peels off the detail card and flies off — implies the automatic follow-up email firing, visually distinct from the lead chip so it doesn't compete with it.
+6. Scene crossfades to a 4-column kanban board using the product's real stage labels/colors (`lib/labels.ts`, `lib/badge-styles.ts`). Since this is a full application (not an email opt-in), the lead card appears directly in **Prijava prejeta** (matching the real `application` → `application_received` dedup rule in `db/queries/leads.ts` — it does not pass through "E-poštni kontakt" first), then hops via absolute-position tweening through **Kontaktiran** → **Stranka**, with a small success checkmark on arrival.
+7. Hold briefly on the end state, fade out, loop back to step 1.
 
 Total loop ≈ 10s. Runs continuously (autoplay loop), not scroll-triggered — approved in prior discussion for this hero placement.
 
@@ -29,7 +30,7 @@ Per prior discussion: stylized mockup, not real screenshots or a functional form
 **Framer Motion state machine, single client component**, no new dependency (already the project's animation library — see `hero.tsx`, `mechanism.tsx`, `Stagger`/`Reveal`/`MotionPress`).
 
 - A stage index (`useState<number>`) advances on a `setTimeout` chain (each stage's duration triggers the next), wrapping back to 0 — not `setInterval`, so durations can vary per stage.
-- `AnimatePresence` mounts/unmounts each stage's content; a lead-identity element carries `layoutId="hero-demo-lead"` across the form → CRM detail → kanban stages so Framer Motion animates its position/size automatically instead of hand-computed coordinates.
+- The three screens (form / CRM detail / kanban) are all mounted simultaneously, stacked absolutely, and crossfaded via `animate={{ opacity }}` per stage. One traveling "lead chip" element persists across stages with its `left`/`top` tweened between named positions (button → CRM header → kanban columns) — a hand-computed position table (`POS`) rather than `layoutId`, chosen for predictable control over the exact button-to-panel-to-column path instead of relying on FLIP auto-measurement.
 - Respects `useReducedMotion()`: when set, stage progression continues (still informative) but transitions become opacity-only crossfades — no flying/sliding motion.
 - Entire scene is `aria-hidden="true"` with a short `sr-only` paragraph summarizing what it depicts, since it's decorative and the surrounding hero copy already states the same thing in text.
 

@@ -1,10 +1,10 @@
 "use client";
 
 import { Container } from "@/app/(public)/_components/container";
+import { HeroDemo } from "@/app/(public)/_components/hero-demo";
 import { MotionPress } from "@/app/(public)/_components/motion-press";
 import { Button } from "@/components/ui/button";
 import { motion, type Variants } from "framer-motion";
-import Image from "next/image";
 
 const EASE = [0.16, 1, 0.3, 1] as const;
 
@@ -54,16 +54,8 @@ export function Hero() {
           initial={{ opacity: 0, scale: 0.96, y: 16 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           transition={{ duration: 0.7, ease: EASE, delay: 0.3 }}
-          className="overflow-hidden rounded-2xl ring-1 ring-background/15 shadow-2xl shadow-black/40"
         >
-          <Image
-            src="/images/marketing/dashboard-pipeline.png"
-            alt="Kanban pregled strank v Trener Growth Sistem CRM"
-            width={2522}
-            height={1567}
-            className="h-auto w-full"
-            priority
-          />
+          <HeroDemo />
         </motion.div>
       </Container>
     </section>
