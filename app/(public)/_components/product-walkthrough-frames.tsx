@@ -37,11 +37,14 @@ export function AppFrame({ children, className }: { children: ReactNode; classNa
   );
 }
 
-/** Advances through `stages` on a timer while `isActive`; resets to the
- *  first stage and freezes there while inactive, so a step re-entering the
- *  viewport always restarts its animation from the same visual beat.
- *  `cycle` counts full passes through `stages`, for callers that need to
- *  force-replay a mount-only entrance animation via a React `key`. */
+/** Advances through `stages` on a timer while `isActive`. While inactive,
+ *  the displayed `stage` is forced to `stages[0]`, but the internal `tick`
+ *  counter itself is NOT reset — so reactivating without an accompanying
+ *  remount would resume from wherever `tick` left off, not restart at 0.
+ *  Callers that need a true "always restart from the same beat on
+ *  reactivation" guarantee must force a remount via a `key` that changes
+ *  across the inactive/active boundary (see product-walkthrough.tsx's
+ *  `renderFrame`). `cycle` counts full passes through `stages`. */
 function useStageLoop<T extends string>(
   stages: readonly T[],
   durations: Record<T, number>,
