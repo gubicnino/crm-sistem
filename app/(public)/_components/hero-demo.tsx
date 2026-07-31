@@ -2,9 +2,10 @@
 
 import { useEffect, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion, type Transition } from "framer-motion";
-import { CheckCircle2, ChevronDown, Mail } from "lucide-react";
-import { pipelineStageDotClasses } from "@/lib/badge-styles";
-import { pipelineStageLabels } from "@/lib/labels";
+import { CheckCircle2, ChevronDown, GripVertical, Mail } from "lucide-react";
+import { leadSourceBadgeClasses, pipelineStageDotClasses } from "@/lib/badge-styles";
+import { avatarTintClass, initials } from "@/lib/display";
+import { leadSourceLabels, pipelineStageLabels } from "@/lib/labels";
 import { ACTIVE_PIPELINE_STAGES } from "@/lib/pipeline";
 import { cn } from "@/lib/utils";
 
@@ -44,14 +45,46 @@ const LEAD_NAME = "Ana Kovač";
 const LEAD_EMAIL = "ana.kovac@example.com";
 const LEAD_INITIALS = "AK";
 
+interface KanbanLead {
+  name: string;
+  email: string;
+  source: "application" | "lead_magnet";
+  time: string;
+}
+
+const ANA_LEAD: KanbanLead = { name: LEAD_NAME, email: LEAD_EMAIL, source: "application", time: "pred nekaj sekundami" };
+
+/** The rest of scripts/seed-demo.ts's seeded leads (minus Ana, who's the
+ *  animated one, and minus the "lost" bucket, which isn't a kanban column) —
+ *  real names/emails/sources so the board matches the actual demo account. */
+const KANBAN_FILLERS: Record<string, KanbanLead[]> = {
+  email_lead: [
+    { name: "Sara Golob", email: "sara.golob@example.com", source: "lead_magnet", time: "pred 35 minutami" },
+    { name: "Tim Kos", email: "tim.kos@example.com", source: "lead_magnet", time: "pred 2 dnevoma" },
+  ],
+  application_received: [
+    { name: "Maja Turk", email: "maja.turk@example.com", source: "application", time: "pred 35 minutami" },
+  ],
+  contacted: [
+    { name: "Nina Horvat", email: "nina.horvat@example.com", source: "application", time: "pred 3 dnevi" },
+    { name: "Marko Zupančič", email: "marko.zupancic@example.com", source: "application", time: "pred 4 dnevi" },
+    { name: "Eva Zupan", email: "eva.zupan@example.com", source: "application", time: "pred 9 dnevi" },
+    { name: "Luka Kranjc", email: "luka.kranjc@example.com", source: "application", time: "pred 12 dnevi" },
+  ],
+  client: [
+    { name: "Petra Vidmar", email: "petra.vidmar@example.com", source: "application", time: "pred 20 dnevi" },
+    { name: "Jan Božič", email: "jan.bozic@example.com", source: "lead_magnet", time: "pred približno 1 mesecem" },
+  ],
+};
+
 const STAGES = [
   "form-empty",
   "form-filling",
   "form-submit",
   "flying",
+  "email-send",
   "crm-detail",
   "detail-hold",
-  "email-send",
   "kanban-enter",
   "hop-contacted",
   "hop-client",
@@ -59,46 +92,30 @@ const STAGES = [
 ] as const;
 type Stage = (typeof STAGES)[number];
 
+/** Deliberately unhurried — this loops in a hero section, not a demo the
+ *  visitor is impatiently clicking through. */
 const DURATIONS: Record<Stage, number> = {
-  "form-empty": 500,
-  "form-filling": 1400,
-  "form-submit": 500,
-  flying: 700,
-  "crm-detail": 900,
-  "detail-hold": 700,
-  "email-send": 700,
-  "kanban-enter": 700,
-  "hop-contacted": 800,
-  "hop-client": 800,
-  "hold-end": 1100,
+  "form-empty": 700,
+  "form-filling": 1900,
+  "form-submit": 700,
+  flying: 900,
+  "email-send": 900,
+  "crm-detail": 1300,
+  "detail-hold": 1100,
+  "kanban-enter": 900,
+  "hop-contacted": 1000,
+  "hop-client": 1000,
+  "hold-end": 1600,
 };
 
 const POS = {
   button: { left: "78%", top: "94%" },
   crmHeader: { left: "50%", top: "12%" },
-  kanban: ["12%", "38%", "63%", "88%"],
 } as const;
 
-function chipPosition(stage: Stage) {
-  switch (stage) {
-    case "kanban-enter":
-      return { left: POS.kanban[1], top: "40%" };
-    case "hop-contacted":
-      return { left: POS.kanban[2], top: "40%" };
-    case "hop-client":
-    case "hold-end":
-      return { left: POS.kanban[3], top: "40%" };
-    case "form-submit":
-      return POS.button;
-    default:
-      return POS.crmHeader;
-  }
-}
-
-function chipStage(stage: Stage): "application_received" | "contacted" | "client" | null {
-  if (stage === "crm-detail" || stage === "detail-hold" || stage === "email-send" || stage === "kanban-enter") {
-    return "application_received";
-  }
+/** Which kanban column (if any) Ana's card currently belongs to. */
+function anaColumnStage(stage: Stage): "application_received" | "contacted" | "client" | null {
+  if (stage === "kanban-enter") return "application_received";
   if (stage === "hop-contacted") return "contacted";
   if (stage === "hop-client" || stage === "hold-end") return "client";
   return null;
@@ -130,27 +147,20 @@ export function HeroDemo() {
 
   const opacity = screenOpacity(stage);
   const filled = stageIndex >= STAGES.indexOf("form-filling");
-  const chipVisible =
-    stage === "form-submit" ||
-    stage === "flying" ||
-    stage === "kanban-enter" ||
-    stage === "hop-contacted" ||
-    stage === "hop-client" ||
-    stage === "hold-end";
-  const pos = chipPosition(stage);
-  const activeChipStage = chipStage(stage);
-  const showDetail = stage === "crm-detail" || stage === "detail-hold" || stage === "email-send";
+  const chipVisible = stage === "form-submit" || stage === "flying" || stage === "email-send";
+  const anaStage = anaColumnStage(stage);
   const showSuccess = stage === "hop-client" || stage === "hold-end";
 
   const spatialTransition: Transition = reduceMotion
-    ? { duration: 0.15 }
+    ? { duration: 0.2 }
     : { duration: DURATIONS[stage] / 1000, ease: EASE };
-  const fadeTransition: Transition = { duration: 0.45, ease: EASE };
+  const fadeTransition: Transition = { duration: 0.75, ease: EASE };
+  const layoutTransition: Transition = reduceMotion ? { duration: 0.2 } : { duration: 0.8, ease: EASE };
 
   return (
     <div
       aria-hidden="true"
-      className="relative h-[440px] w-full overflow-hidden rounded-2xl bg-card text-card-foreground ring-1 ring-background/15 shadow-2xl shadow-black/40"
+      className="relative h-[480px] w-full overflow-hidden rounded-2xl bg-card text-card-foreground ring-1 ring-background/15 shadow-2xl shadow-black/40"
     >
       <p className="sr-only">
         Animirana ponazoritev: obiskovalec izpolni prijavno formo, povpraševanje se samodejno zabeleži v CRM s
@@ -176,17 +186,33 @@ export function HeroDemo() {
         </div>
         <div className="flex flex-col gap-1.5">
           {FORM_FIELDS.map((field, i) => (
-            <FormFieldRow key={field.id} field={field} filled={filled} delay={i * 0.35} />
+            <FormFieldRow key={field.id} field={field} filled={filled} delay={i * 0.5} />
           ))}
         </div>
         <motion.div
           className="mt-1 w-fit rounded-md bg-primary px-3 py-1.5 text-[10px] font-medium text-primary-foreground"
           animate={stage === "form-submit" ? { scale: [1, 1.08, 1] } : { scale: 1 }}
-          transition={{ duration: 0.4 }}
+          transition={{ duration: 0.5 }}
         >
           Pošlji prijavo
         </motion.div>
       </motion.div>
+
+      {/* Email-send beat — between submit and the CRM detail appearing */}
+      <AnimatePresence>
+        {stage === "email-send" && (
+          <motion.div
+            className="absolute z-20 text-primary"
+            style={{ left: POS.crmHeader.left, top: POS.crmHeader.top }}
+            initial={{ opacity: 0, scale: 0.6, x: 0, y: 0 }}
+            animate={{ opacity: [0, 1, 1, 0], scale: 1, x: 60, y: -34 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.9, ease: EASE }}
+          >
+            <Mail className="size-4" />
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* CRM detail screen */}
       <motion.div
@@ -213,102 +239,132 @@ export function HeroDemo() {
         <div className="rounded-lg border bg-background p-2">
           <p className="text-[8px] font-semibold text-muted-foreground uppercase">Odgovori</p>
           <div className="mt-1 flex flex-col gap-1.5">
-            {ANSWERED_FIELDS.map((field) => (
-              <AnimatePresence key={field.id}>
-                {showDetail && (
-                  <motion.div
-                    initial={{ opacity: 0, x: -6 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ duration: 0.35, delay: reduceMotion ? 0 : 0.1 }}
-                  >
-                    <p className="text-[10px] font-medium">{field.label}</p>
-                    <p className="text-[9px] text-muted-foreground">{field.answer}</p>
-                  </motion.div>
-                )}
-              </AnimatePresence>
+            {ANSWERED_FIELDS.map((field, i) => (
+              <motion.div
+                key={field.id}
+                initial={{ opacity: 0, x: -6 }}
+                animate={opacity.crm ? { opacity: 1, x: 0 } : { opacity: 0, x: -6 }}
+                transition={{ duration: 0.5, delay: reduceMotion ? 0 : 0.15 + i * 0.15 }}
+              >
+                <p className="text-[10px] font-medium">{field.label}</p>
+                <p className="text-[9px] text-muted-foreground">{field.answer}</p>
+              </motion.div>
             ))}
           </div>
         </div>
-
-        <AnimatePresence>
-          {stage === "email-send" && (
-            <motion.div
-              className="absolute top-8 right-4 text-primary"
-              initial={{ opacity: 0, scale: 0.6, x: 0, y: 0 }}
-              animate={{ opacity: [0, 1, 1, 0], scale: 1, x: 46, y: -30 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.65, ease: EASE }}
-            >
-              <Mail className="size-4" />
-            </motion.div>
-          )}
-        </AnimatePresence>
       </motion.div>
 
       {/* Kanban screen */}
       <motion.div
-        className="absolute inset-0 top-6 flex flex-col gap-2 px-5 py-3"
+        className="absolute inset-0 top-6 flex flex-col gap-1.5 px-4 py-3"
         animate={{ opacity: opacity.kanban }}
         transition={fadeTransition}
       >
         <p className="text-[11px] font-medium text-muted-foreground">Kanban pregled</p>
-        <div className="mt-1 grid grow grid-cols-4 gap-2">
-          {ACTIVE_PIPELINE_STAGES.map((s) => (
-            <div key={s} className="flex flex-col gap-1 rounded-md bg-muted/40 p-1.5">
-              <div className="flex items-center gap-1">
-                <span className={cn("size-1.5 shrink-0 rounded-full", pipelineStageDotClasses[s])} />
-                <span className="truncate text-[8px] font-medium text-muted-foreground">
-                  {pipelineStageLabels[s]}
-                </span>
+        <div className="grid grow grid-cols-4 gap-1.5">
+          {ACTIVE_PIPELINE_STAGES.map((s) => {
+            const fillers = KANBAN_FILLERS[s] ?? [];
+            const anaHere = anaStage === s;
+            return (
+              <div key={s} className="flex flex-col gap-1 rounded-md bg-muted/40 p-1.5">
+                <div className="flex items-center gap-1">
+                  <span className={cn("size-1.5 shrink-0 rounded-full", pipelineStageDotClasses[s])} />
+                  <span className="truncate text-[8px] font-medium text-muted-foreground">
+                    {pipelineStageLabels[s]}
+                  </span>
+                  <span className="ml-auto shrink-0 rounded-full bg-card px-1 text-[7px] text-muted-foreground ring-1 ring-foreground/10">
+                    {fillers.length + (anaHere ? 1 : 0)}
+                  </span>
+                </div>
+                <div className="flex flex-col gap-1">
+                  {fillers.map((lead) => (
+                    <div key={lead.email} className="rounded-md border bg-background px-1.5 py-1">
+                      <KanbanLeadCardBody lead={lead} />
+                    </div>
+                  ))}
+                  <AnimatePresence>
+                    {anaHere && (
+                      <motion.div
+                        layoutId="hero-demo-ana-card"
+                        className="relative rounded-md border bg-background px-1.5 py-1 ring-1 ring-primary/30"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ layout: layoutTransition, opacity: fadeTransition }}
+                      >
+                        <KanbanLeadCardBody lead={ANA_LEAD} success={showSuccess} />
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </motion.div>
 
-      {/* Traveling lead chip — shared across form -> CRM -> kanban */}
+      {/* Traveling lead chip — form submit through the email-send beat */}
       <motion.div
         className="absolute z-10 flex w-28 -translate-x-1/2 -translate-y-1/2 items-center gap-1.5 rounded-lg border bg-background px-2 py-1.5 shadow-md"
         animate={{
-          left: pos.left,
-          top: pos.top,
+          left: stage === "form-submit" ? POS.button.left : POS.crmHeader.left,
+          top: stage === "form-submit" ? POS.button.top : POS.crmHeader.top,
           opacity: chipVisible ? 1 : 0,
-          scale: showSuccess ? 1.05 : 1,
         }}
         transition={{ ...spatialTransition, opacity: fadeTransition }}
       >
         <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-primary/15 text-[9px] font-medium text-primary">
           {LEAD_INITIALS}
         </span>
-        <div className="min-w-0">
-          <p className="truncate text-[10px] font-medium">{LEAD_NAME}</p>
-          {activeChipStage && (
-            <p className="flex items-center gap-1 text-[8px] text-muted-foreground">
-              <span className={cn("size-1 shrink-0 rounded-full", pipelineStageDotClasses[activeChipStage])} />
-              {pipelineStageLabels[activeChipStage]}
-            </p>
-          )}
-        </div>
-        <AnimatePresence>
-          {showSuccess && (
-            <motion.span
-              className="absolute -top-1.5 -right-1.5 text-success"
-              initial={{ opacity: 0, scale: 0.4 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.3 }}
-            >
-              <CheckCircle2 className="size-3.5" />
-            </motion.span>
-          )}
-        </AnimatePresence>
+        <p className="truncate text-[10px] font-medium">{LEAD_NAME}</p>
       </motion.div>
     </div>
   );
 }
 
+function KanbanLeadCardBody({ lead, success }: { lead: KanbanLead; success?: boolean }) {
+  return (
+    <div className="relative">
+      <div className="flex items-center justify-between gap-1">
+        <div className="flex min-w-0 items-center gap-1">
+          <span
+            className={cn(
+              "flex size-4 shrink-0 items-center justify-center rounded-full text-[7px] font-medium",
+              avatarTintClass(lead.email),
+            )}
+          >
+            {initials(lead.name, lead.email)}
+          </span>
+          <span className="truncate text-[8px] font-medium">{lead.name}</span>
+        </div>
+        <GripVertical className="size-2.5 shrink-0 text-muted-foreground/40" />
+      </div>
+      <p className="mt-0.5 truncate pl-5 text-[7px] text-muted-foreground">{lead.email}</p>
+      <div className="mt-0.5 flex items-center justify-between gap-1 pl-5">
+        <span className={cn("rounded px-1 text-[6.5px] leading-[1.4]", leadSourceBadgeClasses[lead.source])}>
+          {leadSourceLabels[lead.source]}
+        </span>
+        <span className="shrink-0 text-[6.5px] text-muted-foreground">{lead.time}</span>
+      </div>
+      <AnimatePresence>
+        {success && (
+          <motion.span
+            className="absolute -top-1 -right-1 text-success"
+            initial={{ opacity: 0, scale: 0.4 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.4 }}
+          >
+            <CheckCircle2 className="size-3" />
+          </motion.span>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
 function FormFieldRow({ field, filled, delay }: { field: DemoField; filled: boolean; delay: number }) {
-  const transition = { duration: 0.35, delay, ease: EASE };
+  const transition = { duration: 0.5, delay, ease: EASE };
   const showValue = filled && field.answer;
 
   if (field.type === "checkbox") {
