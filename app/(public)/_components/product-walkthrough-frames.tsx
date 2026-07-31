@@ -51,6 +51,7 @@ function useStageLoop<T extends string>(
 
   useEffect(() => {
     if (!isActive) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setTick(0);
       return;
     }
