@@ -18,6 +18,7 @@ import { cn } from "@/lib/utils";
 
 const navLinks = [
   { href: "#kako-deluje", label: "Kako deluje" },
+  { href: "#produkt", label: "Produkt" },
   { href: "#bonusi", label: "Bonusi" },
   { href: "#cenik", label: "Cenik" },
   { href: "#faq", label: "FAQ" },

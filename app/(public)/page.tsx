@@ -8,6 +8,7 @@ import { Mechanism } from "@/app/(public)/_components/mechanism";
 import { MotionProvider } from "@/app/(public)/_components/motion-provider";
 import { Navbar } from "@/app/(public)/_components/navbar";
 import { Pricing } from "@/app/(public)/_components/pricing";
+import { ProductTour } from "@/app/(public)/_components/product-tour";
 import { Reveal } from "@/app/(public)/_components/reveal";
 import { ValueStack } from "@/app/(public)/_components/value-stack";
 
@@ -19,6 +20,9 @@ export default function Home() {
         <Hero />
         <Reveal>
           <Mechanism />
+        </Reveal>
+        <Reveal>
+          <ProductTour />
         </Reveal>
         <Reveal>
           <AudienceFit />
