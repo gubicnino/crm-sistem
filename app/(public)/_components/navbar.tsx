@@ -25,6 +25,7 @@ const navLinks = [
 
 export function Navbar() {
   const [scrolled, setScrolled] = useState(false);
+  const [activeHref, setActiveHref] = useState<string | null>(null);
 
   useEffect(() => {
     function onScroll() {
@@ -33,6 +34,25 @@ export function Navbar() {
     onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  useEffect(() => {
+    const sections = navLinks
+      .map((link) => document.querySelector(link.href))
+      .filter((el): el is Element => el !== null);
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visible = entries
+          .filter((entry) => entry.isIntersecting)
+          .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top)[0];
+        if (visible) setActiveHref(`#${visible.target.id}`);
+      },
+      { rootMargin: "-45% 0px -50% 0px", threshold: 0 },
+    );
+
+    sections.forEach((section) => observer.observe(section));
+    return () => observer.disconnect();
   }, []);
 
   return (
@@ -57,18 +77,28 @@ export function Navbar() {
         </a>
 
         <nav className="hidden items-center gap-8 md:flex">
-          {navLinks.map((link) => (
-            <a
-              key={link.href}
-              href={link.href}
-              className={cn(
-                "text-sm font-medium transition-colors hover:text-hot",
-                scrolled ? "text-foreground/80" : "text-background/80",
-              )}
-            >
-              {link.label}
-            </a>
-          ))}
+          {navLinks.map((link) => {
+            const isActive = activeHref === link.href;
+            return (
+              <a
+                key={link.href}
+                href={link.href}
+                className={cn(
+                  "relative pb-1 text-sm font-medium transition-colors hover:text-hot",
+                  isActive ? "text-hot" : scrolled ? "text-foreground/80" : "text-background/80",
+                )}
+              >
+                {link.label}
+                {isActive && (
+                  <motion.span
+                    layoutId="navbar-active-underline"
+                    className="absolute inset-x-0 -bottom-0.5 h-0.5 rounded-full bg-hot"
+                    transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] as const }}
+                  />
+                )}
+              </a>
+            );
+          })}
         </nav>
 
         <div className="hidden md:block">

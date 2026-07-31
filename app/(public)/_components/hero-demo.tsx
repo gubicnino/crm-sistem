@@ -374,13 +374,11 @@ function FormFieldRow({ field, filled, delay }: { field: DemoField; filled: bool
   if (field.type === "checkbox") {
     return (
       <div className="flex items-center gap-1.5">
-        <motion.span
-          className="flex size-2.5 shrink-0 items-center justify-center rounded-sm border"
-          animate={{
-            backgroundColor: showValue ? "var(--primary)" : "transparent",
-            borderColor: showValue ? "var(--primary)" : "var(--border)",
-          }}
-          transition={transition}
+        <span
+          className={cn(
+            "flex size-2.5 shrink-0 items-center justify-center rounded-sm border transition-colors duration-300",
+            showValue ? "border-primary bg-primary" : "border-border bg-transparent",
+          )}
         >
           <motion.span
             className="text-[6px] leading-none font-bold text-primary-foreground"
@@ -390,7 +388,7 @@ function FormFieldRow({ field, filled, delay }: { field: DemoField; filled: bool
           >
             ✓
           </motion.span>
-        </motion.span>
+        </span>
         <span className="text-[8px] text-muted-foreground">{field.label}</span>
       </div>
     );
