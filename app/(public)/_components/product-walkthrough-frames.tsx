@@ -7,7 +7,10 @@ import type { LeadSource, PipelineStage } from "@/db/schema";
 import { leadSourceBadgeClasses, pipelineStageDotClasses } from "@/lib/badge-styles";
 import { avatarTintClass, initials } from "@/lib/display";
 import { leadSourceLabels, pipelineStageLabels } from "@/lib/labels";
-import { CheckCircle2, GripVertical } from "lucide-react";
+import type { ScheduledEmailStatus } from "@/db/types";
+import { scheduledEmailStatusBadgeClasses } from "@/lib/badge-styles";
+import { scheduledEmailStatusLabels } from "@/lib/labels";
+import { CheckCircle2, GripVertical, Mail } from "lucide-react";
 
 const EASE = [0.16, 1, 0.3, 1] as const;
 
@@ -299,5 +302,60 @@ function KanbanCardBody({ card, success }: { card: KanbanCard; success?: boolean
         )}
       </AnimatePresence>
     </div>
+  );
+}
+
+interface SequenceStep {
+  label: string;
+  status: ScheduledEmailStatus;
+}
+
+type EmailStage = "before" | "sending" | "after" | "hold";
+const EMAIL_STAGES: readonly EmailStage[] = ["before", "sending", "after", "hold"];
+const EMAIL_DURATIONS: Record<EmailStage, number> = { before: 900, sending: 900, after: 500, hold: 1600 };
+const EMAIL_STEP_LABELS = ["Dan 0 · Dobrodošlica", "Dan 2 · Opomnik", "Dan 5 · Zadnja priložnost"] as const;
+
+export function EmailFrame({ isActive }: { isActive: boolean }) {
+  const reduceMotion = useReducedMotion() ?? false;
+  const { stage } = useStageLoop(EMAIL_STAGES, EMAIL_DURATIONS, isActive);
+  const secondStatus: ScheduledEmailStatus = stage === "before" ? "scheduled" : "sent";
+  const steps: SequenceStep[] = [
+    { label: EMAIL_STEP_LABELS[0], status: "sent" },
+    { label: EMAIL_STEP_LABELS[1], status: secondStatus },
+    { label: EMAIL_STEP_LABELS[2], status: "pending" },
+  ];
+
+  return (
+    <AppFrame>
+      <div className="flex h-full flex-col gap-2 px-4 py-3">
+        <p className="text-[11px] font-medium text-muted-foreground">Email sekvenca</p>
+        <div className="relative flex flex-col gap-2">
+          {steps.map((step) => (
+            <div
+              key={step.label}
+              className="flex items-center justify-between gap-2 rounded-md border bg-background px-2 py-1.5"
+            >
+              <span className="text-[9px] font-medium">{step.label}</span>
+              <span className={cn("rounded px-1.5 py-0.5 text-[7px]", scheduledEmailStatusBadgeClasses[step.status])}>
+                {scheduledEmailStatusLabels[step.status]}
+              </span>
+            </div>
+          ))}
+          <AnimatePresence>
+            {stage === "sending" && (
+              <motion.div
+                className="absolute top-8 right-2 text-primary"
+                initial={{ opacity: 0, scale: 0.6, y: 0 }}
+                animate={{ opacity: [0, 1, 1, 0], scale: 1, y: -18 }}
+                exit={{ opacity: 0 }}
+                transition={withReducedMotion(reduceMotion, { duration: 0.9, ease: EASE })}
+              >
+                <Mail className="size-4" />
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      </div>
+    </AppFrame>
   );
 }
