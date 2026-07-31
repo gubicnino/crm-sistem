@@ -21,9 +21,11 @@ interface DemoField {
   answer?: string;
 }
 
-/** Mirrors scripts/seed-demo.ts's applicationQuestions verbatim, and the
- *  answers below match its seeded "Ana Kovač" lead exactly — this demo is a
- *  live recreation of the real demo account, not invented copy. */
+/** Mirrors scripts/seed-demo.ts's applicationQuestions verbatim. The goal
+ *  and experience answers match its seeded "Ana Kovač" lead exactly; her
+ *  real seed data only answers those two (the rest are optional and she
+ *  skipped them there), so the remaining four are plausible invented
+ *  answers — filled in so the demo shows every question getting answered. */
 const FORM_FIELDS: DemoField[] = [
   { id: "goal", label: "Kakšen je tvoj cilj?", type: "text", answer: "Shujšati 5 kg" },
   {
@@ -33,10 +35,16 @@ const FORM_FIELDS: DemoField[] = [
     options: ["Manj kot leto", "1-3 leta", "Več kot 3 leta"],
     answer: "Manj kot leto",
   },
-  { id: "availability", label: "Kdaj si na voljo za treninge?", type: "text" },
-  { id: "injuries", label: "Imaš kakšne poškodbe ali zdravstvene omejitve?", type: "textarea" },
-  { id: "location", label: "Kje bi rad treniral?", type: "select", options: ["V fitnesu", "Na prostem", "Doma"] },
-  { id: "newsletter", label: "Se želiš prijaviti na e-novice z nasveti za trening?", type: "checkbox" },
+  { id: "availability", label: "Kdaj si na voljo za treninge?", type: "text", answer: "Popoldne med tednom" },
+  { id: "injuries", label: "Imaš kakšne poškodbe ali zdravstvene omejitve?", type: "textarea", answer: "Ne, nimam." },
+  {
+    id: "location",
+    label: "Kje bi rad treniral?",
+    type: "select",
+    options: ["V fitnesu", "Na prostem", "Doma"],
+    answer: "V fitnesu",
+  },
+  { id: "newsletter", label: "Se želiš prijaviti na e-novice z nasveti za trening?", type: "checkbox", answer: "Da" },
 ];
 
 const ANSWERED_FIELDS = FORM_FIELDS.filter((f) => f.answer);
@@ -49,31 +57,28 @@ interface KanbanLead {
   name: string;
   email: string;
   source: "application" | "lead_magnet";
-  time: string;
 }
 
-const ANA_LEAD: KanbanLead = { name: LEAD_NAME, email: LEAD_EMAIL, source: "application", time: "pred nekaj sekundami" };
+const ANA_LEAD: KanbanLead = { name: LEAD_NAME, email: LEAD_EMAIL, source: "application" };
 
 /** The rest of scripts/seed-demo.ts's seeded leads (minus Ana, who's the
  *  animated one, and minus the "lost" bucket, which isn't a kanban column) —
  *  real names/emails/sources so the board matches the actual demo account. */
 const KANBAN_FILLERS: Record<string, KanbanLead[]> = {
   email_lead: [
-    { name: "Sara Golob", email: "sara.golob@example.com", source: "lead_magnet", time: "pred 35 minutami" },
-    { name: "Tim Kos", email: "tim.kos@example.com", source: "lead_magnet", time: "pred 2 dnevoma" },
+    { name: "Sara Golob", email: "sara.golob@example.com", source: "lead_magnet" },
+    { name: "Tim Kos", email: "tim.kos@example.com", source: "lead_magnet" },
   ],
-  application_received: [
-    { name: "Maja Turk", email: "maja.turk@example.com", source: "application", time: "pred 35 minutami" },
-  ],
+  application_received: [{ name: "Maja Turk", email: "maja.turk@example.com", source: "application" }],
   contacted: [
-    { name: "Nina Horvat", email: "nina.horvat@example.com", source: "application", time: "pred 3 dnevi" },
-    { name: "Marko Zupančič", email: "marko.zupancic@example.com", source: "application", time: "pred 4 dnevi" },
-    { name: "Eva Zupan", email: "eva.zupan@example.com", source: "application", time: "pred 9 dnevi" },
-    { name: "Luka Kranjc", email: "luka.kranjc@example.com", source: "application", time: "pred 12 dnevi" },
+    { name: "Nina Horvat", email: "nina.horvat@example.com", source: "application" },
+    { name: "Marko Zupančič", email: "marko.zupancic@example.com", source: "application" },
+    { name: "Eva Zupan", email: "eva.zupan@example.com", source: "application" },
+    { name: "Luka Kranjc", email: "luka.kranjc@example.com", source: "application" },
   ],
   client: [
-    { name: "Petra Vidmar", email: "petra.vidmar@example.com", source: "application", time: "pred 20 dnevi" },
-    { name: "Jan Božič", email: "jan.bozic@example.com", source: "lead_magnet", time: "pred približno 1 mesecem" },
+    { name: "Petra Vidmar", email: "petra.vidmar@example.com", source: "application" },
+    { name: "Jan Božič", email: "jan.bozic@example.com", source: "lead_magnet" },
   ],
 };
 
@@ -220,7 +225,7 @@ export function HeroDemo() {
         animate={{ opacity: opacity.crm }}
         transition={fadeTransition}
       >
-        <div className="mt-9 flex items-start justify-between gap-2">
+        <div className="flex items-start justify-between gap-2">
           <div>
             <p className="text-[12px] font-semibold">{LEAD_NAME}</p>
             <p className="text-[9px] text-muted-foreground">Prijava · Prijava prejeta</p>
@@ -340,11 +345,10 @@ function KanbanLeadCardBody({ lead, success }: { lead: KanbanLead; success?: boo
         <GripVertical className="size-2.5 shrink-0 text-muted-foreground/40" />
       </div>
       <p className="mt-0.5 truncate pl-5 text-[7px] text-muted-foreground">{lead.email}</p>
-      <div className="mt-0.5 flex items-center justify-between gap-1 pl-5">
+      <div className="mt-0.5 pl-5">
         <span className={cn("rounded px-1 text-[6.5px] leading-[1.4]", leadSourceBadgeClasses[lead.source])}>
           {leadSourceLabels[lead.source]}
         </span>
-        <span className="shrink-0 text-[6.5px] text-muted-foreground">{lead.time}</span>
       </div>
       <AnimatePresence>
         {success && (
@@ -370,7 +374,23 @@ function FormFieldRow({ field, filled, delay }: { field: DemoField; filled: bool
   if (field.type === "checkbox") {
     return (
       <div className="flex items-center gap-1.5">
-        <span className="size-2.5 shrink-0 rounded-sm border" />
+        <motion.span
+          className="flex size-2.5 shrink-0 items-center justify-center rounded-sm border"
+          animate={{
+            backgroundColor: showValue ? "var(--primary)" : "transparent",
+            borderColor: showValue ? "var(--primary)" : "var(--border)",
+          }}
+          transition={transition}
+        >
+          <motion.span
+            className="text-[6px] leading-none font-bold text-primary-foreground"
+            initial={{ opacity: 0, scale: 0.5 }}
+            animate={{ opacity: showValue ? 1 : 0, scale: showValue ? 1 : 0.5 }}
+            transition={transition}
+          >
+            ✓
+          </motion.span>
+        </motion.span>
         <span className="text-[8px] text-muted-foreground">{field.label}</span>
       </div>
     );
