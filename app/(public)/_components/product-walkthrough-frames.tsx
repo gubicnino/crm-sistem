@@ -3,6 +3,10 @@
 import { motion, useReducedMotion, type Transition } from "framer-motion";
 import { type ReactNode, useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
+import type { LeadSource, PipelineStage } from "@/db/schema";
+import { leadSourceBadgeClasses, pipelineStageDotClasses } from "@/lib/badge-styles";
+import { avatarTintClass, initials } from "@/lib/display";
+import { leadSourceLabels, pipelineStageLabels } from "@/lib/labels";
 
 const EASE = [0.16, 1, 0.3, 1] as const;
 
@@ -115,6 +119,72 @@ export function CaptureFrame({ isActive }: { isActive: boolean }) {
         >
           Pošlji prijavo
         </motion.div>
+      </div>
+    </AppFrame>
+  );
+}
+
+interface OrganizeLead {
+  name: string;
+  email: string;
+  source: LeadSource;
+  stage: PipelineStage;
+}
+
+const ORGANIZE_LEADS: readonly OrganizeLead[] = [
+  { name: "Nika Kralj", email: "nika.kralj@example.com", source: "application", stage: "application_received" },
+  { name: "Bojan Vidic", email: "bojan.vidic@example.com", source: "lead_magnet", stage: "email_lead" },
+  { name: "Maja Novak", email: "maja.novak@example.com", source: "application", stage: "contacted" },
+  { name: "Rok Kovačič", email: "rok.kovacic@example.com", source: "lead_magnet", stage: "client" },
+];
+
+type OrganizeStage = "idle" | "highlight" | "hold";
+const ORGANIZE_STAGES: readonly OrganizeStage[] = ["idle", "highlight", "hold"];
+const ORGANIZE_DURATIONS: Record<OrganizeStage, number> = { idle: 1000, highlight: 1600, hold: 1000 };
+
+export function OrganizeFrame({ isActive }: { isActive: boolean }) {
+  const { stage } = useStageLoop(ORGANIZE_STAGES, ORGANIZE_DURATIONS, isActive);
+  const highlighted = stage !== "idle";
+
+  return (
+    <AppFrame>
+      <div className="flex h-full flex-col gap-1.5 px-4 py-3">
+        <p className="text-[11px] font-medium text-muted-foreground">Stranke</p>
+        <div className="flex flex-col gap-1.5">
+          {ORGANIZE_LEADS.map((lead, i) => (
+            <div
+              key={lead.email}
+              className={cn(
+                "flex items-center justify-between gap-2 rounded-md border bg-background px-2 py-1.5 transition-shadow duration-300",
+                highlighted && i === 0 && "ring-2 ring-primary/50",
+              )}
+            >
+              <div className="flex min-w-0 items-center gap-1.5">
+                <span
+                  className={cn(
+                    "flex size-4 shrink-0 items-center justify-center rounded-full text-[7px] font-medium",
+                    avatarTintClass(lead.email),
+                  )}
+                >
+                  {initials(lead.name, lead.email)}
+                </span>
+                <div className="min-w-0">
+                  <p className="truncate text-[9px] font-medium">{lead.name}</p>
+                  <p className="truncate text-[7.5px] text-muted-foreground">{lead.email}</p>
+                </div>
+              </div>
+              <div className="flex shrink-0 items-center gap-1">
+                <span className={cn("rounded px-1 text-[6.5px] leading-[1.4]", leadSourceBadgeClasses[lead.source])}>
+                  {leadSourceLabels[lead.source]}
+                </span>
+                <span className="flex items-center gap-1 text-[7px] text-muted-foreground">
+                  <span className={cn("size-1.5 rounded-full", pipelineStageDotClasses[lead.stage])} />
+                  {pipelineStageLabels[lead.stage]}
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     </AppFrame>
   );
