@@ -121,7 +121,7 @@ export function ProductWalkthrough() {
             </ul>
           </div>
 
-          <div className="flex flex-col gap-16 lg:gap-24">
+          <div className="flex flex-col gap-10 lg:gap-14">
             {STEPS.map((step, i) => {
               const isActive = i === activeIndex;
               const Frame = FRAMES[step.id];
@@ -131,13 +131,13 @@ export function ProductWalkthrough() {
                   ref={(el) => {
                     stepRefs.current[i] = el;
                   }}
-                  className="flex min-h-[70vh] flex-col justify-center gap-4 lg:min-h-screen"
+                  className="flex min-h-[55vh] flex-col justify-center gap-3 lg:min-h-[65vh]"
                 >
                   <div className="lg:hidden">
                     <p className="text-lg font-semibold">{step.title}</p>
-                    <p className="mt-1 text-sm text-muted-foreground">{step.description}</p>
                   </div>
                   <Frame key={isActive ? "on" : "off"} isActive={isActive} />
+                  <p className="text-center text-sm text-muted-foreground lg:text-left">{step.description}</p>
                 </div>
               );
             })}

@@ -1,14 +1,20 @@
 "use client";
 
 import { AnimatePresence, motion, useReducedMotion, type Transition } from "framer-motion";
-import { CheckCircle2, GripVertical, Mail } from "lucide-react";
+import { CheckCircle2, ChevronDown, GripVertical, Mail } from "lucide-react";
 import { type ReactNode, useEffect, useState } from "react";
 import { Counter } from "@/app/(public)/_components/counter";
 import type { LeadSource, PipelineStage } from "@/db/schema";
 import type { ScheduledEmailStatus } from "@/db/types";
-import { leadSourceBadgeClasses, pipelineStageDotClasses, scheduledEmailStatusBadgeClasses } from "@/lib/badge-styles";
+import {
+  leadSourceBadgeClasses,
+  pipelineStageBadgeClasses,
+  pipelineStageDotClasses,
+  scheduledEmailStatusBadgeClasses,
+} from "@/lib/badge-styles";
 import { avatarTintClass, initials } from "@/lib/display";
 import { leadSourceLabels, pipelineStageLabels, scheduledEmailStatusLabels } from "@/lib/labels";
+import { ACTIVE_PIPELINE_STAGES } from "@/lib/pipeline";
 import { cn } from "@/lib/utils";
 
 const EASE = [0.16, 1, 0.3, 1] as const;
@@ -71,20 +77,49 @@ function withReducedMotion(reduceMotion: boolean, transition: Transition): Trans
   return reduceMotion ? { duration: 0.2 } : transition;
 }
 
+type CaptureFieldType = "text" | "select" | "textarea" | "checkbox";
+
+interface CaptureField {
+  id: string;
+  label: string;
+  type: CaptureFieldType;
+  options?: readonly string[];
+  answer: string;
+}
+
+/** Mirrors hero-demo.tsx's FORM_FIELDS verbatim (same real applicationQuestions
+ *  from scripts/seed-demo.ts, same seeded Ana Kovač answers plus the same 4
+ *  plausible invented ones) so this step shows the exact same form-fill
+ *  animation as the hero, not a simplified re-derivation of it. */
+const CAPTURE_FIELDS: readonly CaptureField[] = [
+  { id: "goal", label: "Kakšen je tvoj cilj?", type: "text", answer: "Shujšati 5 kg" },
+  {
+    id: "experience",
+    label: "Koliko časa že treniraš?",
+    type: "select",
+    options: ["Manj kot leto", "1-3 leta", "Več kot 3 leta"],
+    answer: "Manj kot leto",
+  },
+  { id: "availability", label: "Kdaj si na voljo za treninge?", type: "text", answer: "Popoldne med tednom" },
+  { id: "injuries", label: "Imaš kakšne poškodbe ali zdravstvene omejitve?", type: "textarea", answer: "Ne, nimam." },
+  {
+    id: "location",
+    label: "Kje bi rad treniral?",
+    type: "select",
+    options: ["V fitnesu", "Na prostem", "Doma"],
+    answer: "V fitnesu",
+  },
+  { id: "newsletter", label: "Se želiš prijaviti na e-novice z nasveti za trening?", type: "checkbox", answer: "Da" },
+];
+
 type CaptureStage = "empty" | "filling" | "submit" | "hold";
 const CAPTURE_STAGES: readonly CaptureStage[] = ["empty", "filling", "submit", "hold"];
 const CAPTURE_DURATIONS: Record<CaptureStage, number> = {
-  empty: 600,
-  filling: 1600,
+  empty: 700,
+  filling: 1900,
   submit: 700,
   hold: 1400,
 };
-
-const CAPTURE_FIELDS = [
-  { id: "name", label: "Ime", answer: "Nika Kralj" },
-  { id: "goal", label: "Kakšen je tvoj cilj?", answer: "Shujšati 5 kg" },
-  { id: "availability", label: "Kdaj si na voljo?", answer: "Popoldne med tednom" },
-] as const;
 
 export function CaptureFrame({ isActive }: { isActive: boolean }) {
   const reduceMotion = useReducedMotion() ?? false;
@@ -92,31 +127,19 @@ export function CaptureFrame({ isActive }: { isActive: boolean }) {
   const filled = stage === "filling" || stage === "submit" || stage === "hold";
 
   return (
-    <AppFrame>
-      <div className="flex h-full flex-col gap-3 px-5 py-4">
+    <AppFrame className="h-105">
+      <div className="flex h-full flex-col gap-2 overflow-hidden px-5 py-3">
         <div>
           <p className="text-[13px] font-semibold">Prijavi se</p>
           <p className="text-[9px] text-muted-foreground">Izpolni formo in se ti oglasim v 24 urah</p>
         </div>
-        <div className="flex flex-col gap-2">
+        <div className="flex flex-col gap-1.5">
           {CAPTURE_FIELDS.map((field, i) => (
-            <div key={field.id} className="flex flex-col gap-0.5">
-              <span className="text-[9px] text-muted-foreground">{field.label}</span>
-              <div className="flex items-center rounded-md border px-2 py-1">
-                <motion.span
-                  className="text-[10px] font-medium"
-                  animate={{ opacity: filled ? 1 : 0, x: filled ? 0 : -4 }}
-                  transition={withReducedMotion(reduceMotion, { duration: 0.4, delay: i * 0.35, ease: EASE })}
-                >
-                  {filled ? field.answer : ""}
-                </motion.span>
-                {!filled && <span className="text-[10px] text-muted-foreground/50">Vpiši odgovor…</span>}
-              </div>
-            </div>
+            <CaptureFieldRow key={field.id} field={field} filled={filled} delay={i * 0.5} reduceMotion={reduceMotion} />
           ))}
         </div>
         <motion.div
-          className="mt-auto w-fit rounded-md bg-primary px-3 py-1.5 text-[10px] font-medium text-primary-foreground"
+          className="mt-1 w-fit rounded-md bg-primary px-3 py-1.5 text-[10px] font-medium text-primary-foreground"
           animate={stage === "submit" ? { scale: [1, 1.08, 1] } : { scale: 1 }}
           transition={withReducedMotion(reduceMotion, { duration: 0.5 })}
         >
@@ -127,68 +150,228 @@ export function CaptureFrame({ isActive }: { isActive: boolean }) {
   );
 }
 
+function CaptureFieldRow({
+  field,
+  filled,
+  delay,
+  reduceMotion,
+}: {
+  field: CaptureField;
+  filled: boolean;
+  delay: number;
+  reduceMotion: boolean;
+}) {
+  const transition = withReducedMotion(reduceMotion, { duration: 0.5, delay, ease: EASE });
+  const showValue = filled && field.answer;
+
+  if (field.type === "checkbox") {
+    return (
+      <div className="flex items-center gap-1.5">
+        <span
+          className={cn(
+            "flex size-2.5 shrink-0 items-center justify-center rounded-sm border transition-colors duration-300",
+            showValue ? "border-primary bg-primary" : "border-border bg-transparent",
+          )}
+        >
+          <motion.span
+            className="text-[6px] leading-none font-bold text-primary-foreground"
+            initial={{ opacity: 0, scale: 0.5 }}
+            animate={{ opacity: showValue ? 1 : 0, scale: showValue ? 1 : 0.5 }}
+            transition={transition}
+          >
+            ✓
+          </motion.span>
+        </span>
+        <span className="text-[8px] text-muted-foreground">{field.label}</span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-0.5">
+      <span className="text-[8px] text-muted-foreground">{field.label}</span>
+      {field.type === "select" ? (
+        <div className="flex items-center justify-between rounded-md border px-1.5 py-0.5">
+          <motion.span
+            className="text-[9px] font-medium"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: showValue ? 1 : 0 }}
+            transition={transition}
+          >
+            {showValue ? field.answer : ""}
+          </motion.span>
+          {!showValue && <span className="text-[9px] text-muted-foreground/50">Izberi…</span>}
+          <ChevronDown className="size-2.5 shrink-0 text-muted-foreground" />
+        </div>
+      ) : (
+        <div className={cn("flex items-center rounded-md border px-1.5 py-0.5", field.type === "textarea" && "h-5")}>
+          <motion.span
+            className="text-[9px] font-medium"
+            initial={{ opacity: 0, x: -4 }}
+            animate={{ opacity: showValue ? 1 : 0, x: showValue ? 0 : -4 }}
+            transition={transition}
+          >
+            {showValue ? field.answer : ""}
+          </motion.span>
+          {!showValue && <span className="text-[9px] text-muted-foreground/50">Vpiši odgovor…</span>}
+        </div>
+      )}
+    </div>
+  );
+}
+
 interface OrganizeLead {
   name: string;
   email: string;
   source: LeadSource;
   stage: PipelineStage;
+  createdLabel: string;
 }
 
+/** Real seeded leads from scripts/seed-demo.ts (same names/emails/dates a
+ *  trainer would actually see on /leads), laid out with the same columns
+ *  and badge colors as the real table (components/leads/**, lib/badge-styles.ts). */
 const ORGANIZE_LEADS: readonly OrganizeLead[] = [
-  { name: "Nika Kralj", email: "nika.kralj@example.com", source: "application", stage: "application_received" },
-  { name: "Bojan Vidič", email: "bojan.vidic@example.com", source: "lead_magnet", stage: "email_lead" },
-  { name: "Maja Novak", email: "maja.novak@example.com", source: "application", stage: "contacted" },
-  { name: "Rok Kovačič", email: "rok.kovacic@example.com", source: "lead_magnet", stage: "client" },
+  {
+    name: "Sara Golob",
+    email: "sara.golob@example.com",
+    source: "lead_magnet",
+    stage: "email_lead",
+    createdLabel: "31. 7. 2026",
+  },
+  {
+    name: "Maja Turk",
+    email: "maja.turk@example.com",
+    source: "application",
+    stage: "application_received",
+    createdLabel: "31. 7. 2026",
+  },
+  {
+    name: "Ana Kovač",
+    email: "ana.kovac@example.com",
+    source: "application",
+    stage: "application_received",
+    createdLabel: "30. 7. 2026",
+  },
 ];
 
-type OrganizeStage = "idle" | "highlight" | "hold";
-const ORGANIZE_STAGES: readonly OrganizeStage[] = ["idle", "highlight", "hold"];
-const ORGANIZE_DURATIONS: Record<OrganizeStage, number> = { idle: 1000, highlight: 1600, hold: 1000 };
+/** Ana Kovač's real answers from scripts/seed-demo.ts, in the same order the
+ *  real /leads/[id] page renders them (components/leads/answers-view.tsx). */
+const ANA_ANSWERS = [
+  { label: "Kakšen je tvoj cilj?", value: "Shujšati 5 kg" },
+  { label: "Imaš kakšne poškodbe ali zdravstvene omejitve?", value: "Blaga bolečina v kolenu, brez omejitev za hojo" },
+  { label: "Kje bi rad treniral?", value: "V fitnesu" },
+  { label: "Koliko časa že treniraš?", value: "Manj kot leto" },
+  { label: "Se želiš prijaviti na e-novice z nasveti za trening?", value: "Da" },
+  { label: "Kdaj si na voljo za treninge?", value: "Ponedeljek in sreda zvečer" },
+] as const;
+
+type OrganizeStage = "table" | "clicking" | "detail";
+const ORGANIZE_STAGES: readonly OrganizeStage[] = ["table", "clicking", "detail"];
+const ORGANIZE_DURATIONS: Record<OrganizeStage, number> = { table: 1700, clicking: 500, detail: 2600 };
 
 export function OrganizeFrame({ isActive }: { isActive: boolean }) {
+  const reduceMotion = useReducedMotion() ?? false;
   const { stage } = useStageLoop(ORGANIZE_STAGES, ORGANIZE_DURATIONS, isActive);
-  const highlighted = stage !== "idle";
+  const showDetail = stage === "detail";
+  const fadeTransition = withReducedMotion(reduceMotion, { duration: 0.5, ease: EASE });
 
   return (
-    <AppFrame>
-      <div className="flex h-full flex-col gap-1.5 px-4 py-3">
+    <AppFrame className="h-100">
+      {/* Stranke table */}
+      <motion.div
+        className="absolute inset-0 top-6 flex flex-col gap-2 overflow-hidden px-4 py-3"
+        animate={{ opacity: showDetail ? 0 : 1 }}
+        transition={fadeTransition}
+      >
         <p className="text-[11px] font-medium text-muted-foreground">Stranke</p>
-        <div className="flex flex-col gap-1.5">
-          {ORGANIZE_LEADS.map((lead, i) => (
+        <div className="flex flex-col overflow-hidden rounded-md border">
+          <div className="flex items-center gap-2 border-b bg-muted/40 px-2 py-1 text-[6.5px] font-medium text-muted-foreground">
+            <span className="w-[22%]">Ime</span>
+            <span className="w-[23%]">E-pošta</span>
+            <span className="w-[13%]">Vir</span>
+            <span className="w-[13%]">Faza</span>
+            <span className="w-[15%]">Ustvarjeno</span>
+            <span className="w-[14%] text-right">Akcije</span>
+          </div>
+          {ORGANIZE_LEADS.map((lead) => (
             <div
               key={lead.email}
               className={cn(
-                "flex items-center justify-between gap-2 rounded-md border bg-background px-2 py-1.5 transition-shadow duration-300",
-                highlighted && i === 0 && "ring-2 ring-primary/50",
+                "flex items-center gap-2 border-b px-2 py-1.5 transition-colors duration-300 last:border-b-0",
+                stage === "clicking" && lead.name === "Ana Kovač" && "bg-primary/5 ring-1 ring-inset ring-primary/40",
               )}
             >
-              <div className="flex min-w-0 items-center gap-1.5">
+              <div className="flex w-[22%] min-w-0 items-center gap-1.5">
                 <span
                   className={cn(
-                    "flex size-4 shrink-0 items-center justify-center rounded-full text-[7px] font-medium",
+                    "flex size-4 shrink-0 items-center justify-center rounded-full text-[6.5px] font-medium",
                     avatarTintClass(lead.email),
                   )}
                 >
                   {initials(lead.name, lead.email)}
                 </span>
-                <div className="min-w-0">
-                  <p className="truncate text-[9px] font-medium">{lead.name}</p>
-                  <p className="truncate text-[7.5px] text-muted-foreground">{lead.email}</p>
-                </div>
+                <span className="truncate text-[7.5px] font-medium">{lead.name}</span>
               </div>
-              <div className="flex shrink-0 items-center gap-1">
-                <span className={cn("rounded px-1 text-[6.5px] leading-[1.4]", leadSourceBadgeClasses[lead.source])}>
+              <span className="w-[23%] truncate text-[6.5px] text-muted-foreground">{lead.email}</span>
+              <span className="w-[13%]">
+                <span
+                  className={cn(
+                    "rounded-full px-1 py-0.5 text-[6px] font-medium",
+                    leadSourceBadgeClasses[lead.source],
+                  )}
+                >
                   {leadSourceLabels[lead.source]}
                 </span>
-                <span className="flex items-center gap-1 text-[7px] text-muted-foreground">
-                  <span className={cn("size-1.5 rounded-full", pipelineStageDotClasses[lead.stage])} />
+              </span>
+              <span className="w-[13%]">
+                <span
+                  className={cn("rounded-full px-1 py-0.5 text-[6px] font-medium", pipelineStageBadgeClasses[lead.stage])}
+                >
                   {pipelineStageLabels[lead.stage]}
                 </span>
-              </div>
+              </span>
+              <span className="w-[15%] truncate text-[6.5px] text-muted-foreground">{lead.createdLabel}</span>
+              <span className="flex w-[14%] shrink-0 justify-end gap-1">
+                <span className="rounded border px-1 py-0.5 text-[6px] text-muted-foreground">Uredi</span>
+                <span className="rounded border px-1 py-0.5 text-[6px] text-destructive">Izbriši</span>
+              </span>
             </div>
           ))}
         </div>
-      </div>
+      </motion.div>
+
+      {/* Ana Kovač detail — mirrors app/(dashboard)/leads/[id]/page.tsx */}
+      <motion.div
+        className="absolute inset-0 top-6 flex flex-col gap-2 overflow-hidden px-4 py-3"
+        animate={{ opacity: showDetail ? 1 : 0 }}
+        transition={fadeTransition}
+      >
+        <div>
+          <p className="text-[12px] font-semibold">Ana Kovač</p>
+          <p className="text-[8px] text-muted-foreground">Prijava · Prijava prejeta</p>
+        </div>
+        <div className="rounded-lg border bg-background p-2">
+          <p className="text-[7px] font-semibold text-muted-foreground uppercase">Kontaktni podatki</p>
+          <p className="mt-1 text-[8.5px]">E-pošta: ana.kovac@example.com</p>
+        </div>
+        <div className="rounded-lg border bg-background p-2">
+          <p className="text-[7px] font-semibold text-muted-foreground uppercase">Odgovori</p>
+          <div className="mt-1 flex flex-col gap-1">
+            {ANA_ANSWERS.map((answer, i) => (
+              <motion.div
+                key={answer.label}
+                initial={{ opacity: 0, x: -4 }}
+                animate={showDetail ? { opacity: 1, x: 0 } : { opacity: 0, x: -4 }}
+                transition={withReducedMotion(reduceMotion, { duration: 0.4, delay: reduceMotion ? 0 : 0.1 + i * 0.1 })}
+              >
+                <p className="text-[8px] font-medium">{answer.label}</p>
+                <p className="text-[7.5px] text-muted-foreground">{answer.value}</p>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </motion.div>
     </AppFrame>
   );
 }
@@ -196,14 +379,32 @@ export function OrganizeFrame({ isActive }: { isActive: boolean }) {
 interface KanbanCard {
   name: string;
   email: string;
+  source: LeadSource;
 }
 
-const KANBAN_CARD: KanbanCard = { name: "Nika Kralj", email: "nika.kralj@example.com" };
+const ANA_LEAD: KanbanCard = { name: "Ana Kovač", email: "ana.kovac@example.com", source: "application" };
+
+/** Mirrors hero-demo.tsx's KANBAN_FILLERS verbatim — real names/emails/sources
+ *  from scripts/seed-demo.ts (minus Ana, who's the animated card here too, and
+ *  minus the "lost" bucket, which isn't a kanban column) so the board matches
+ *  the actual demo account exactly, same as the hero. */
 const KANBAN_FILLERS: Partial<Record<PipelineStage, KanbanCard[]>> = {
-  contacted: [{ name: "Maja Novak", email: "maja.novak@example.com" }],
-  client: [{ name: "Rok Kovačič", email: "rok.kovacic@example.com" }],
+  email_lead: [
+    { name: "Sara Golob", email: "sara.golob@example.com", source: "lead_magnet" },
+    { name: "Tim Kos", email: "tim.kos@example.com", source: "lead_magnet" },
+  ],
+  application_received: [{ name: "Maja Turk", email: "maja.turk@example.com", source: "application" }],
+  contacted: [
+    { name: "Nina Horvat", email: "nina.horvat@example.com", source: "application" },
+    { name: "Marko Zupančič", email: "marko.zupancic@example.com", source: "application" },
+    { name: "Eva Zupan", email: "eva.zupan@example.com", source: "application" },
+    { name: "Luka Kranjc", email: "luka.kranjc@example.com", source: "application" },
+  ],
+  client: [
+    { name: "Petra Vidmar", email: "petra.vidmar@example.com", source: "application" },
+    { name: "Jan Božič", email: "jan.bozic@example.com", source: "lead_magnet" },
+  ],
 };
-const KANBAN_COLUMNS: readonly PipelineStage[] = ["application_received", "contacted", "client"];
 
 type KanbanStage = "col-1" | "col-2" | "col-3" | "hold";
 const KANBAN_STAGES: readonly KanbanStage[] = ["col-1", "col-2", "col-3", "hold"];
@@ -218,23 +419,26 @@ const KANBAN_COLUMN_FOR_STAGE: Record<KanbanStage, PipelineStage> = {
 export function KanbanFrame({ isActive }: { isActive: boolean }) {
   const reduceMotion = useReducedMotion() ?? false;
   const { stage } = useStageLoop(KANBAN_STAGES, KANBAN_DURATIONS, isActive);
-  const cardColumn = KANBAN_COLUMN_FOR_STAGE[stage];
+  const anaColumn = KANBAN_COLUMN_FOR_STAGE[stage];
   const showSuccess = stage === "col-3" || stage === "hold";
 
   return (
-    <AppFrame>
+    <AppFrame className="h-110">
       <div className="flex h-full flex-col gap-1.5 px-4 py-3">
         <p className="text-[11px] font-medium text-muted-foreground">Kanban pregled</p>
-        <div className="grid grow grid-cols-3 gap-1.5">
-          {KANBAN_COLUMNS.map((col) => {
+        <div className="grid grow grid-cols-4 gap-1.5">
+          {ACTIVE_PIPELINE_STAGES.map((col) => {
             const fillers = KANBAN_FILLERS[col] ?? [];
-            const cardHere = cardColumn === col;
+            const anaHere = anaColumn === col;
             return (
               <div key={col} className="flex flex-col gap-1 rounded-md bg-muted/40 p-1.5">
                 <div className="flex items-center gap-1">
                   <span className={cn("size-1.5 shrink-0 rounded-full", pipelineStageDotClasses[col])} />
-                  <span className="truncate text-[7.5px] font-medium text-muted-foreground">
+                  <span className="truncate text-[7px] font-medium text-muted-foreground">
                     {pipelineStageLabels[col]}
+                  </span>
+                  <span className="ml-auto shrink-0 rounded-full bg-card px-1 text-[6px] text-muted-foreground ring-1 ring-foreground/10">
+                    {fillers.length + (anaHere ? 1 : 0)}
                   </span>
                 </div>
                 <div className="flex flex-col gap-1">
@@ -244,7 +448,7 @@ export function KanbanFrame({ isActive }: { isActive: boolean }) {
                     </div>
                   ))}
                   <AnimatePresence>
-                    {cardHere && (
+                    {anaHere && (
                       <motion.div
                         layoutId="walkthrough-kanban-card"
                         className="relative rounded-md border bg-background px-1.5 py-1 ring-1 ring-primary/30"
@@ -256,7 +460,7 @@ export function KanbanFrame({ isActive }: { isActive: boolean }) {
                           opacity: { duration: 0.3 },
                         }}
                       >
-                        <KanbanCardBody card={KANBAN_CARD} success={showSuccess} />
+                        <KanbanCardBody card={ANA_LEAD} success={showSuccess} />
                       </motion.div>
                     )}
                   </AnimatePresence>
@@ -283,9 +487,15 @@ function KanbanCardBody({ card, success }: { card: KanbanCard; success?: boolean
           >
             {initials(card.name, card.email)}
           </span>
-          <span className="truncate text-[8px] font-medium">{card.name}</span>
+          <span className="truncate text-[7.5px] font-medium">{card.name}</span>
         </div>
         <GripVertical className="size-2.5 shrink-0 text-muted-foreground/40" />
+      </div>
+      <p className="mt-0.5 truncate pl-5 text-[6.5px] text-muted-foreground">{card.email}</p>
+      <div className="mt-0.5 pl-5">
+        <span className={cn("rounded px-1 text-[6px] leading-[1.4]", leadSourceBadgeClasses[card.source])}>
+          {leadSourceLabels[card.source]}
+        </span>
       </div>
       <AnimatePresence>
         {success && (
