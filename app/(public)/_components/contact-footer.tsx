@@ -1,16 +1,16 @@
 "use client";
 
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useState } from "react";
-import { useForm } from "react-hook-form";
+import { Container } from "@/app/(public)/_components/container";
+import { MotionPress } from "@/app/(public)/_components/motion-press";
+import { Stagger, StaggerItem } from "@/app/(public)/_components/stagger";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Container } from "@/app/(public)/_components/container";
-import { MotionPress } from "@/app/(public)/_components/motion-press";
-import { Stagger, StaggerItem } from "@/app/(public)/_components/stagger";
 import { contactSchema, type ContactInput } from "@/lib/validation/contact";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useState } from "react";
+import { useForm } from "react-hook-form";
 
 export function ContactFooter() {
   const [submitted, setSubmitted] = useState(false);
@@ -33,9 +33,10 @@ export function ContactFooter() {
       <Container className="py-20 lg:py-28">
         <div className="grid gap-12 lg:grid-cols-[1fr_1.2fr] lg:items-start">
           <Stagger>
+            
             <StaggerItem>
               <h2 className="text-3xl font-semibold tracking-tight sm:text-4xl">
-                Povprašuj za dostop
+                Pošlji povpraševanje
               </h2>
             </StaggerItem>
             <StaggerItem>
@@ -48,6 +49,9 @@ export function ContactFooter() {
               <p className="mt-8 text-sm text-background/50">
                 Trener Growth Sistem · info@trenergrowth.si · +386 40 000 000
               </p>
+            </StaggerItem>
+            <StaggerItem>
+              <img src="images\brand\main-logo.png" alt="Trener Growth Sistem" className="h-20 w-auto mt-5" />
             </StaggerItem>
           </Stagger>
           {submitted ? (
@@ -98,7 +102,7 @@ export function ContactFooter() {
                   <MotionPress>
                     <Button
                       type="submit"
-                      size="lg"
+                      size="xl"
                       disabled={isSubmitting}
                       className="mt-2 bg-hot text-white hover:bg-hot/90"
                     >

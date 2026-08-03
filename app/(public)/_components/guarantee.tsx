@@ -1,6 +1,6 @@
-import { Gift, ShieldCheck, Unlock } from "lucide-react";
 import { Container } from "@/app/(public)/_components/container";
 import { Stagger, StaggerItem } from "@/app/(public)/_components/stagger";
+import { Gift, ShieldCheck, Unlock } from "lucide-react";
 
 export function Guarantee() {
   return (
@@ -17,7 +17,7 @@ export function Guarantee() {
             </StaggerItem>
             <StaggerItem>
               <p className="mt-3 max-w-xl text-muted-foreground">
-                Verjameva v sistem, zato tveganje prevzameva namesto tebe.
+                Verjamemo v sistem, zato tveganje prevzamemo namesto tebe.
               </p>
             </StaggerItem>
             <Stagger className="mt-8 grid w-full gap-4 sm:grid-cols-2">
@@ -25,7 +25,7 @@ export function Guarantee() {
                 <Gift className="size-6 shrink-0 text-hot" />
                 <div>
                   <p className="font-semibold">1 mesec brezplačno</p>
-                  <p className="text-sm text-muted-foreground">Za prvih 5 trenerjev, ki se pridružijo.</p>
+                  <p className="text-sm text-muted-foreground">Brezplačno testiranje.</p>
                 </div>
               </StaggerItem>
               <StaggerItem className="flex items-center gap-3 rounded-2xl bg-card p-5 text-left ring-1 ring-foreground/10">

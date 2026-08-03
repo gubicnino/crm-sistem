@@ -51,6 +51,25 @@ async function main() {
       options: ["Manj kot leto", "1-3 leta", "Več kot 3 leta"],
     },
     { id: "availability", label: "Kdaj si na voljo za treninge?", type: "text", required: false },
+    {
+      id: "injuries",
+      label: "Imaš kakšne poškodbe ali zdravstvene omejitve?",
+      type: "textarea",
+      required: false,
+    },
+    {
+      id: "location",
+      label: "Kje bi rad treniral?",
+      type: "select",
+      required: false,
+      options: ["V fitnesu", "Na prostem", "Doma"],
+    },
+    {
+      id: "newsletter",
+      label: "Se želiš prijaviti na e-novice z nasveti za trening?",
+      type: "checkbox",
+      required: false,
+    },
   ]);
 
   await seedDefaultSequencesForTrainer(scope);
@@ -74,7 +93,14 @@ async function main() {
       stage: "application_received" as const,
       createdAt: daysAgo(1),
       stageChangedAt: daysAgo(1),
-      answers: { goal: "Shujšati 5 kg", experience: "Manj kot leto" },
+      answers: {
+        goal: "Shujšati 5 kg",
+        experience: "Manj kot leto",
+        availability: "Ponedeljek in sreda zvečer",
+        injuries: "Blaga bolečina v kolenu, brez omejitev za hojo",
+        location: "V fitnesu",
+        newsletter: "Da",
+      },
     },
     {
       name: "Marko Zupančič",

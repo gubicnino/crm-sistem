@@ -1,10 +1,10 @@
 "use client";
 
+import { Container } from "@/app/(public)/_components/container";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AnimatePresence, motion } from "framer-motion";
 import Image from "next/image";
 import { useState } from "react";
-import { Container } from "@/app/(public)/_components/container";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const EASE = [0.16, 1, 0.3, 1] as const;
 
@@ -42,13 +42,12 @@ export function ProductTour() {
   return (
     <section id="produkt" className="scroll-mt-24 py-20 lg:py-28">
       <Container>
-        <span className="text-sm font-medium tracking-wide text-hot uppercase">Produkt</span>
-        <h2 className="mt-3 max-w-2xl text-3xl font-semibold tracking-tight sm:text-4xl">
-          Poglej, kako izgleda v praksi
-        </h2>
-        <p className="mt-3 max-w-2xl text-muted-foreground">
-          Pravi posnetki zaslona iz delujočega sistema — ne skice ali mockupi.
-        </p>
+        <div className="align-center flex flex-col items-center gap-2 text-center">
+          <span className="text-sm font-medium tracking-wide text-hot uppercase">Produkt</span>
+          <h2 className="mt-3 max-w-2xl text-3xl font-semibold tracking-tight sm:text-4xl">
+            Produkt, ki prinaša rezultate
+          </h2>
+        </div>
 
         <Tabs value={active} onValueChange={(value) => setActive(String(value))} className="mt-10 items-center">
           <TabsList>

@@ -165,7 +165,7 @@ export function HeroDemo() {
   return (
     <div
       aria-hidden="true"
-      className="relative h-[480px] w-full overflow-hidden rounded-2xl bg-card text-card-foreground ring-1 ring-background/15 shadow-2xl shadow-black/40"
+      className="relative h-[480px] w-full overflow-hidden rounded-2xl bg-card text-card-foreground ring-1 ring-foreground/10 shadow-2xl shadow-foreground/10"
     >
       <p className="sr-only">
         Animirana ponazoritev: obiskovalec izpolni prijavno formo, povpraševanje se samodejno zabeleži v CRM s

@@ -1,9 +1,9 @@
 "use client";
 
-import { motion } from "framer-motion";
-import { MessageCircle, Inbox, Kanban, HandCoins } from "lucide-react";
 import { Container } from "@/app/(public)/_components/container";
 import { Stagger, StaggerItem } from "@/app/(public)/_components/stagger";
+import { motion } from "framer-motion";
+import { HandCoins, Inbox, Kanban, MessageCircle } from "lucide-react";
 
 const EASE = [0.16, 1, 0.3, 1] as const;
 
@@ -17,7 +17,7 @@ const steps = [
 export function Mechanism() {
   return (
     <section id="kako-deluje" className="scroll-mt-24 py-20 lg:py-28">
-      <Container>
+      <Container> 
         <span className="text-sm font-medium tracking-wide text-hot uppercase">Kako deluje</span>
         <h2 className="mt-3 max-w-2xl text-3xl font-semibold tracking-tight sm:text-4xl">
           Od povpraševanja do stranke, samodejno

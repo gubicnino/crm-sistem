@@ -26,7 +26,7 @@ Reuses this file's existing `useStageLoop`/`cycle` convention (see current `Anal
 - On each `cycle` (keyed remount of the bars container, same pattern as the current `key={cycle}` div), every row's bar animates `width` from `0` to its target percentage via Framer Motion, staggered per row (`delay: i * 0.15` down each column) so the two funnels visibly fill top-to-bottom rather than popping in at once.
 - Drop-off captions fade in alongside their row (`opacity: 0 → 1`, same delay as the row's bar) rather than being present from frame 0, so they read as part of the reveal instead of static chrome.
 - `withReducedMotion` applied as it is elsewhere in this file: reduced-motion users get a flat `duration: 0.2` opacity-only transition instead of the width tween.
-- `AppFrame` height: bump from the current default (`h-80`) to a taller variant (`h-100`, matching `OrganizeFrame`) — four stacked rows plus captions in the lead-magnet column need more vertical room than the old 4-bar chart did.
+- `AppFrame` height: kept at the default (`h-80`) — the funnel content is top-aligned under the section title rather than stretched to fill, so the default height leaves the same kind of bottom margin `EmailFrame` already has.
 
 ## Out of scope
 

@@ -1,20 +1,20 @@
 "use client";
 
+import { Container } from "@/app/(public)/_components/container";
+import { MotionPress } from "@/app/(public)/_components/motion-press";
+import { Button } from "@/components/ui/button";
+import {
+    Sheet,
+    SheetClose,
+    SheetContent,
+    SheetHeader,
+    SheetTitle,
+    SheetTrigger,
+} from "@/components/ui/sheet";
+import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
 import { Menu } from "lucide-react";
 import { useEffect, useState } from "react";
-import { Button } from "@/components/ui/button";
-import {
-  Sheet,
-  SheetClose,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from "@/components/ui/sheet";
-import { Container } from "@/app/(public)/_components/container";
-import { MotionPress } from "@/app/(public)/_components/motion-press";
-import { cn } from "@/lib/utils";
 
 const navLinks = [
   { href: "#sistem", label: "Sistem" },
@@ -68,14 +68,8 @@ export function Navbar() {
       )}
     >
       <Container className="flex h-16 items-center justify-between">
-        <a
-          href="#"
-          className={cn(
-            "text-sm font-semibold tracking-tight transition-colors",
-            scrolled ? "text-foreground" : "text-background",
-          )}
-        >
-          Trener Growth
+        <a href="#" className="text-sm font-semibold tracking-tight text-foreground">
+          <img src="images\brand\logo-tgs-nobg.png" alt="Trener Growth Sistem" className="h-12 w-auto" />
         </a>
 
         <nav className="hidden items-center gap-8 md:flex">
@@ -87,7 +81,7 @@ export function Navbar() {
                 href={link.href}
                 className={cn(
                   "relative pb-1 text-sm font-medium transition-colors hover:text-hot",
-                  isActive ? "text-hot" : scrolled ? "text-foreground/80" : "text-background/80",
+                  isActive ? "text-hot" : "text-foreground/80",
                 )}
               >
                 {link.label}
@@ -106,7 +100,7 @@ export function Navbar() {
         <div className="hidden md:block">
           <MotionPress>
             <Button
-              size="sm"
+              size="lg"
               nativeButton={false}
               render={<a href="#kontakt" />}
               className="bg-hot text-white hover:bg-hot/90"
@@ -119,11 +113,7 @@ export function Navbar() {
         <Sheet>
           <SheetTrigger
             render={
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                className={cn("md:hidden", scrolled ? "text-foreground" : "text-background hover:bg-background/10")}
-              />
+              <Button variant="ghost" size="icon-sm" className="text-foreground md:hidden" />
             }
           >
             <Menu />
@@ -155,7 +145,7 @@ export function Navbar() {
                 render={
                   <a
                     href="#kontakt"
-                    className="flex w-full items-center justify-center rounded-lg bg-hot px-4 py-2.5 text-sm font-medium text-white hover:bg-hot/90"
+                    className="flex w-full items-center justify-center rounded-lg bg-hot px-4 py-3 text-base font-medium text-white hover:bg-hot/90"
                   />
                 }
               >

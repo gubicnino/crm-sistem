@@ -254,7 +254,7 @@ export const sl = {
     previewTitle: "Predogled forme",
     previewSubtitle: "Tako bo videti na tvoji spletni strani",
     previewFormTitle: "Prijavi se",
-    previewFormSubtitle: "Izpolni formo in se ti oglasimo v 24 urah",
+    previewFormSubtitle: "Izpolni formo in se ti oglasim v 24 urah",
     previewUntitled: "Novo vprašanje",
     previewSelectPlaceholder: "Izberi…",
     previewInputPlaceholder: "Vpiši odgovor…",

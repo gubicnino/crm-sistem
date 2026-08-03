@@ -1,15 +1,15 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
 import { Container } from "@/app/(public)/_components/container";
 import {
-  AnalyticsFrame,
-  CaptureFrame,
-  EmailFrame,
-  KanbanFrame,
-  OrganizeFrame,
+    AnalyticsFrame,
+    CaptureFrame,
+    EmailFrame,
+    KanbanFrame,
+    OrganizeFrame,
 } from "@/app/(public)/_components/product-walkthrough-frames";
 import { cn } from "@/lib/utils";
+import { useEffect, useRef, useState } from "react";
 
 /** Keying each frame by its own on/off state forces React to remount it
  *  across the inactive/active boundary, so useStageLoop's internal timer
@@ -33,33 +33,39 @@ interface WalkthroughStep {
   id: StepId;
   title: string;
   description: string;
+  long_description: string;
 }
 
 const STEPS: readonly WalkthroughStep[] = [
   {
     id: "capture",
     title: "Zajem strank",
-    description: "Prijavna forma na tvoji strani samodejno zabeleži vsako povpraševanje — brez ročnega vnašanja.",
+    description: "Prijavna forma na tvoji strani samodejno zabeleži vsako povpraševanje.",
+    long_description: "Na tvojo spletno stran se vgradi prijavna forma, ki vsako povpraševanje samodejno poveže s CRM sistemom, pripravljeno za obravnavo v nekaj sekundah.",
   },
   {
     id: "organize",
-    title: "Organizacija leadov",
-    description: "Vsaka stranka pristane na enem seznamu — ime, e-pošta, vir in faza na prvi pogled.",
+    title: "Organizacija kontaktov",
+    description: "Vsi kontakti in njihovi podatki zbrani na enem seznamu.",
+    long_description: "Nič več iskanja kontaktov po deset različnih aplikacijah in nič več pozabljenih odgovorov. Vsi podatki o kontaktu, od kod je prišel in v kateri fazi je, so zbrani na enem mestu.",
   },
   {
     id: "kanban",
     title: "Kanban pregled",
-    description: "Povleci in spusti stranko skozi faze — od povpraševanja do plačljive stranke.",
+    description: "Premikanje kontaktov med fazami prodajnega lijaka, dokler ne postanejo plačljive stranke.",
+    long_description: "Namesto seznamov in ugibanja imaš vizualni pregled celotnega prodajnega procesa. CRM sistem omogoča vizualno spremljanje in premikanje kontakta skozi različne faze prodajnega procesa, od prvega povpraševanja do končne konverzije.",
   },
   {
     id: "email",
     title: "Email avtomatizacije",
-    description: "Sistem sam pošilja follow-up sporočila, dokler stranka ne odgovori ali konvertira.",
+    description: "Nastavljanje avtomatskih emailov sekvenc, ki spremljajo kontakte in jih spodbujajo k konverziji.",
+    long_description: "Namesto ročnega pisanja vsakemu posebej nastaviš avtomatske email sekvence, ki se sprožijo ob določenem dogodku in kontakte glede na njihovo fazo počasi vodijo skozi prodajni lijak do plačljivih strank.",
   },
   {
     id: "analytics",
     title: "Analitika",
     description: "Spremljaj stopnjo konverzije in vir povpraševanj skozi čas.",
+    long_description: "Vir kontaktov, stopnja konverzije in gibanje skozi čas so prikazani grafično na enem mestu. V realnem času vidiš, kaj v prodaji deluje, in lahko sproti optimiziraš.",
   },
 ] as const;
 
@@ -90,14 +96,13 @@ export function ProductWalkthrough() {
   return (
     <section id="sistem" className="scroll-mt-24 py-20 lg:py-28">
       <Container>
-        <span className="text-sm font-medium tracking-wide text-hot uppercase">Sistem</span>
-        <h2 className="mt-3 max-w-2xl text-3xl font-semibold tracking-tight sm:text-4xl">
-          En sistem, od prvega klika do plačljive stranke
-        </h2>
-
-        <div className="mt-12 grid gap-10 lg:grid-cols-[380px_1fr] lg:gap-16">
-          <div className="hidden lg:sticky lg:top-32 lg:block lg:h-fit">
-            <ul className="flex flex-col gap-6">
+        <div className="grid gap-10 lg:grid-cols-[380px_1fr] lg:gap-16">
+          <div className="lg:sticky lg:top-32 lg:h-fit">
+            <span className="text-sm font-medium tracking-wide text-hot uppercase">Sistem</span>
+            <h2 className="mt-3 max-w-2xl text-3xl font-semibold tracking-tight sm:text-4xl">
+              En sistem, od prvega klika do plačljive stranke
+            </h2>
+            <ul className="mt-8 hidden flex-col gap-6 lg:flex">
               {STEPS.map((step, i) => (
                 <li key={step.id}>
                   <p
@@ -137,7 +142,7 @@ export function ProductWalkthrough() {
                     <p className="text-lg font-semibold">{step.title}</p>
                   </div>
                   <Frame key={isActive ? "on" : "off"} isActive={isActive} />
-                  <p className="text-center text-sm text-muted-foreground lg:text-left">{step.description}</p>
+                  <p className="text-center text-sm lg:text-left">{step.long_description}</p>
                 </div>
               );
             })}

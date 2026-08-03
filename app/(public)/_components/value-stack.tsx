@@ -1,9 +1,9 @@
 "use client";
 
-import { motion } from "framer-motion";
 import { Container } from "@/app/(public)/_components/container";
 import { Counter } from "@/app/(public)/_components/counter";
 import { Stagger, StaggerItem } from "@/app/(public)/_components/stagger";
+import { motion } from "framer-motion";
 
 const EASE = [0.16, 1, 0.3, 1] as const;
 
@@ -34,9 +34,7 @@ export function ValueStack() {
           </StaggerItem>
         </Stagger>
         <p className="mt-6 text-sm text-muted-foreground">
-          Toliko bi te stalo, če bi vsak del sistema naročil posebej — ločena spletna stran, CRM
-          orodje, obrazci in email avtomatizacija. Pri nas dobiš vse skupaj v enem, brez enkratnega
-          stroška razvoja (primerljiva enkratna vrednost: €8.800).
+          Toliko bi te stalo, če bi vsak del sistema naročil posebej (primerljiva enkratna vrednost: €8.800).
         </p>
       </Container>
     </section>

@@ -20,7 +20,7 @@ const item: Variants = {
 
 export function Hero() {
   return (
-    <section className="flex min-h-screen items-center bg-foreground text-background">
+    <section className="flex min-h-screen items-center bg-background text-foreground">
       <Container className="grid w-full gap-10 py-24 lg:grid-cols-[1.1fr_1fr] lg:items-center">
         <motion.div variants={container} initial="hidden" animate="show">
           <motion.h1
@@ -29,7 +29,7 @@ export function Hero() {
           >
             Od ogleda do plačljive stranke.
           </motion.h1>
-          <motion.p variants={item} className="mt-6 max-w-xl text-lg text-background/70">
+          <motion.p variants={item} className="mt-6 max-w-xl text-lg text-foreground/70">
             Trener Growth Sistem je celoten sistem za pridobivanje strank za osebne trenerje in
             online coache: zajame povpraševanja, jih organizira in samodejno spremlja, dokler ne
             postanejo plačljive stranke.
@@ -37,7 +37,7 @@ export function Hero() {
           <motion.div variants={item} className="mt-8 flex flex-col items-start gap-3 sm:flex-row sm:items-center">
             <MotionPress>
               <Button
-                size="lg"
+                size="xl"
                 nativeButton={false}
                 render={<a href="#kontakt" />}
                 className="bg-hot text-white hover:bg-hot/90"
@@ -45,7 +45,7 @@ export function Hero() {
                 Pošlji povpraševanje
               </Button>
             </MotionPress>
-            <p className="text-sm text-background/60">
+            <p className="text-sm text-foreground/60">
               Trenutno sprejemamo omejeno število trenerjev.
             </p>
           </motion.div>

@@ -3,7 +3,6 @@
 import { AnimatePresence, motion, useReducedMotion, type Transition } from "framer-motion";
 import { CheckCircle2, ChevronDown, GripVertical, Mail } from "lucide-react";
 import { type ReactNode, useEffect, useState } from "react";
-import { Counter } from "@/app/(public)/_components/counter";
 import type { LeadSource, PipelineStage } from "@/db/schema";
 import type { ScheduledEmailStatus } from "@/db/types";
 import {
@@ -15,6 +14,7 @@ import {
 import { avatarTintClass, initials } from "@/lib/display";
 import { leadSourceLabels, pipelineStageLabels, scheduledEmailStatusLabels } from "@/lib/labels";
 import { ACTIVE_PIPELINE_STAGES } from "@/lib/pipeline";
+import { sl } from "@/lib/strings";
 import { cn } from "@/lib/utils";
 
 const EASE = [0.16, 1, 0.3, 1] as const;
@@ -572,8 +572,43 @@ export function EmailFrame({ isActive }: { isActive: boolean }) {
 type AnalyticsStage = "grow" | "hold";
 const ANALYTICS_STAGES: readonly AnalyticsStage[] = ["grow", "hold"];
 const ANALYTICS_DURATIONS: Record<AnalyticsStage, number> = { grow: 1200, hold: 1400 };
-const BAR_HEIGHTS: readonly number[] = [65, 85, 55, 95];
-const BAR_LABELS = ["1. teden", "2. teden", "3. teden", "4. teden"] as const;
+
+interface AnalyticsFunnelStage {
+  stage: PipelineStage;
+  count: number;
+}
+
+interface AnalyticsFunnel {
+  title: string;
+  dotClassName: string;
+  stages: readonly AnalyticsFunnelStage[];
+}
+
+/** Mirrors the real /analytics page's two-funnel comparison
+ *  (components/analytics/funnel.tsx), same stage labels/colors and the same
+ *  demo counts a trainer would actually see on the seeded demo account, so
+ *  this frame is a truthful miniature rather than invented chart data. */
+const ANALYTICS_FUNNELS: readonly AnalyticsFunnel[] = [
+  {
+    title: sl.analytics.funnelApplication,
+    dotClassName: "bg-hot",
+    stages: [
+      { stage: "application_received", count: 7 },
+      { stage: "contacted", count: 5 },
+      { stage: "client", count: 1 },
+    ],
+  },
+  {
+    title: sl.analytics.funnelLeadMagnet,
+    dotClassName: "bg-primary",
+    stages: [
+      { stage: "email_lead", count: 3 },
+      { stage: "application_received", count: 1 },
+      { stage: "contacted", count: 1 },
+      { stage: "client", count: 1 },
+    ],
+  },
+];
 
 export function AnalyticsFrame({ isActive }: { isActive: boolean }) {
   const reduceMotion = useReducedMotion() ?? false;
@@ -581,25 +616,64 @@ export function AnalyticsFrame({ isActive }: { isActive: boolean }) {
 
   return (
     <AppFrame>
-      <div className="flex h-full flex-col gap-3 px-4 py-3">
-        <div className="flex items-baseline justify-between">
-          <p className="text-[11px] font-medium text-muted-foreground">Stopnja konverzije</p>
-          <Counter to={34} suffix="%" className="text-lg font-semibold text-foreground" />
-        </div>
-        <div key={cycle} className="flex grow gap-3 pb-1">
-          {BAR_HEIGHTS.map((pct, i) => (
-            <div key={BAR_LABELS[i]} className="flex grow flex-col items-center justify-end gap-1">
-              <motion.div
-                className="w-full rounded-t-sm bg-primary/70"
-                initial={{ height: 0 }}
-                animate={{ height: `${pct}%` }}
-                transition={withReducedMotion(reduceMotion, { duration: 1, ease: EASE })}
-              />
-              <span className="shrink-0 text-[7px] text-muted-foreground">{BAR_LABELS[i]}</span>
-            </div>
+      <div className="flex h-full flex-col gap-2 px-4 py-3">
+        <p className="text-[11px] font-medium text-muted-foreground">{sl.analytics.funnelTitle}</p>
+        <div key={cycle} className="mt-1 grid grid-cols-2 gap-4">
+          {ANALYTICS_FUNNELS.map((funnel) => (
+            <AnalyticsFunnelColumn key={funnel.title} funnel={funnel} reduceMotion={reduceMotion} />
           ))}
         </div>
       </div>
     </AppFrame>
+  );
+}
+
+function AnalyticsFunnelColumn({ funnel, reduceMotion }: { funnel: AnalyticsFunnel; reduceMotion: boolean }) {
+  const max = Math.max(1, ...funnel.stages.map((s) => s.count));
+
+  return (
+    <div className="flex flex-col gap-1">
+      <div className="mb-0.5 flex items-center gap-1">
+        <span className={cn("size-1.5 shrink-0 rounded-full", funnel.dotClassName)} />
+        <span className="truncate text-[6.5px] font-semibold">{funnel.title}</span>
+      </div>
+      {funnel.stages.map((s, i) => {
+        const prev = i > 0 ? funnel.stages[i - 1].count : null;
+        const dropoff = prev && prev > 0 ? Math.round((s.count / prev) * 100) : null;
+        const delay = i * 0.15;
+        return (
+          <div key={s.stage}>
+            {i > 0 && dropoff !== null && (
+              <motion.p
+                className="pl-11 text-[6px] text-muted-foreground"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={withReducedMotion(reduceMotion, { duration: 0.3, delay })}
+              >
+                ↓ {dropoff}%
+              </motion.p>
+            )}
+            <div className="flex items-center gap-1">
+              <span className="w-10 shrink-0 truncate text-right text-[6px] text-muted-foreground">
+                {pipelineStageLabels[s.stage]}
+              </span>
+              <div className="h-3 flex-1 overflow-hidden rounded-xs bg-muted/40">
+                <motion.div
+                  className={cn(
+                    "flex h-full items-center rounded-xs px-1 text-[5.5px] font-semibold text-white",
+                    pipelineStageDotClasses[s.stage],
+                  )}
+                  initial={{ width: 0 }}
+                  animate={{ width: `${Math.max(16, (s.count / max) * 100)}%` }}
+                  transition={withReducedMotion(reduceMotion, { duration: 0.7, delay, ease: EASE })}
+                >
+                  {s.count}
+                </motion.div>
+              </div>
+            </div>
+          </div>
+        );
+      })}
+    </div>
   );
 }
