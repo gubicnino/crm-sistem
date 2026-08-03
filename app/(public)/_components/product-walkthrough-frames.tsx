@@ -42,7 +42,7 @@ export function AppFrame({ children, className }: { children: ReactNode; classNa
  *  Callers that need a true "always restart from the same beat on
  *  reactivation" guarantee must force a remount via a `key` that changes
  *  across the inactive/active boundary (see product-walkthrough.tsx's
- *  `renderFrame`). `cycle` counts full passes through `stages`. */
+ *  `FRAMES` lookup). `cycle` counts full passes through `stages`. */
 function useStageLoop<T extends string>(
   stages: readonly T[],
   durations: Record<T, number>,

@@ -210,7 +210,7 @@ interface OrganizeLead {
 
 const ORGANIZE_LEADS: readonly OrganizeLead[] = [
   { name: "Nika Kralj", email: "nika.kralj@example.com", source: "application", stage: "application_received" },
-  { name: "Bojan Vidic", email: "bojan.vidic@example.com", source: "lead_magnet", stage: "email_lead" },
+  { name: "Bojan Vidič", email: "bojan.vidic@example.com", source: "lead_magnet", stage: "email_lead" },
   { name: "Maja Novak", email: "maja.novak@example.com", source: "application", stage: "contacted" },
   { name: "Rok Kovačič", email: "rok.kovacic@example.com", source: "lead_magnet", stage: "client" },
 ];
@@ -625,8 +625,28 @@ import {
 } from "@/app/(public)/_components/product-walkthrough-frames";
 import { cn } from "@/lib/utils";
 
+/** Keying each frame by its own on/off state forces React to remount it
+ *  across the inactive/active boundary, so useStageLoop's internal timer
+ *  state always starts fresh at 0 on (re)activation — the "always restart
+ *  from the same beat" behavior is achieved via remount, not via any reset
+ *  logic inside the hook itself (which would require reading/writing a ref
+ *  during render or calling setState synchronously in an effect body, both
+ *  of which this repo's react-hooks/refs and react-hooks/set-state-in-effect
+ *  lint rules reject). A typed lookup (rather than a string-keyed switch
+ *  with a `default: return null`) also means an unmapped step id is a
+ *  compile error, not a silent blank frame. */
+const FRAMES = {
+  capture: CaptureFrame,
+  organize: OrganizeFrame,
+  kanban: KanbanFrame,
+  email: EmailFrame,
+  analytics: AnalyticsFrame,
+} as const;
+
+type StepId = keyof typeof FRAMES;
+
 interface WalkthroughStep {
-  id: string;
+  id: StepId;
   title: string;
   description: string;
 }
@@ -658,32 +678,6 @@ const STEPS: readonly WalkthroughStep[] = [
     description: "Spremljaj stopnjo konverzije in vir povpraševanj skozi čas.",
   },
 ] as const;
-
-/** Keying each frame by its own on/off state forces React to remount it
- *  across the inactive/active boundary, so useStageLoop's internal timer
- *  state always starts fresh at 0 on (re)activation — the "always restart
- *  from the same beat" behavior is achieved via remount, not via any reset
- *  logic inside the hook itself (which would require reading/writing a ref
- *  during render or calling setState synchronously in an effect body, both
- *  of which this repo's react-hooks/refs and react-hooks/set-state-in-effect
- *  lint rules reject). */
-function renderFrame(stepId: string, isActive: boolean) {
-  const activationKey = isActive ? "on" : "off";
-  switch (stepId) {
-    case "capture":
-      return <CaptureFrame key={activationKey} isActive={isActive} />;
-    case "organize":
-      return <OrganizeFrame key={activationKey} isActive={isActive} />;
-    case "kanban":
-      return <KanbanFrame key={activationKey} isActive={isActive} />;
-    case "email":
-      return <EmailFrame key={activationKey} isActive={isActive} />;
-    case "analytics":
-      return <AnalyticsFrame key={activationKey} isActive={isActive} />;
-    default:
-      return null;
-  }
-}
 
 export function ProductWalkthrough() {
   const stepRefs = useRef<(HTMLDivElement | null)[]>([]);
@@ -744,21 +738,25 @@ export function ProductWalkthrough() {
           </div>
 
           <div className="flex flex-col gap-16 lg:gap-24">
-            {STEPS.map((step, i) => (
-              <div
-                key={step.id}
-                ref={(el) => {
-                  stepRefs.current[i] = el;
-                }}
-                className="flex min-h-[70vh] flex-col justify-center gap-4 lg:min-h-screen"
-              >
-                <div className="lg:hidden">
-                  <p className="text-lg font-semibold">{step.title}</p>
-                  <p className="mt-1 text-sm text-muted-foreground">{step.description}</p>
+            {STEPS.map((step, i) => {
+              const isActive = i === activeIndex;
+              const Frame = FRAMES[step.id];
+              return (
+                <div
+                  key={step.id}
+                  ref={(el) => {
+                    stepRefs.current[i] = el;
+                  }}
+                  className="flex min-h-[70vh] flex-col justify-center gap-4 lg:min-h-screen"
+                >
+                  <div className="lg:hidden">
+                    <p className="text-lg font-semibold">{step.title}</p>
+                    <p className="mt-1 text-sm text-muted-foreground">{step.description}</p>
+                  </div>
+                  <Frame key={isActive ? "on" : "off"} isActive={isActive} />
                 </div>
-                {renderFrame(step.id, i === activeIndex)}
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       </Container>
