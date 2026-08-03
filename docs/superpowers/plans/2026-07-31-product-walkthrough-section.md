@@ -68,10 +68,16 @@ export function AppFrame({ children, className }: { children: ReactNode; classNa
   );
 }
 
-/** Advances through `stages` on a timer while `isActive`; resets to the
- *  first stage and freezes there while inactive, so a step re-entering the
- *  viewport always restarts its animation from the same visual beat.
- *  `cycle` counts full passes through `stages`, for callers that need to
+/** Advances through `stages` on a timer while `isActive`; freezes on the
+ *  first stage while inactive. Deliberately does NOT reset its internal
+ *  counter itself on deactivation — this repo's `react-hooks/refs` and
+ *  `react-hooks/set-state-in-effect` lint rules reject both a ref-based
+ *  reset-on-prop-change and a direct `setState` call in an effect body, so
+ *  "always restart from the same beat" is instead achieved by the caller
+ *  (Task 6's `renderFrame`) remounting the component via a `key` that
+ *  changes across the inactive/active boundary — a fresh mount's
+ *  `useState(0)` naturally starts at 0, no reset logic needed here. `cycle`
+ *  counts full passes through `stages`, for callers that need to
  *  force-replay a mount-only entrance animation via a React `key`. */
 function useStageLoop<T extends string>(
   stages: readonly T[],
@@ -81,10 +87,7 @@ function useStageLoop<T extends string>(
   const [tick, setTick] = useState(0);
 
   useEffect(() => {
-    if (!isActive) {
-      setTick(0);
-      return;
-    }
+    if (!isActive) return;
     const currentStage = stages[tick % stages.length];
     const timer = setTimeout(() => {
       setTick((t) => t + 1);
@@ -541,19 +544,15 @@ import { Counter } from "@/app/(public)/_components/counter";
 
 Append to `app/(public)/_components/product-walkthrough-frames.tsx`:
 ```tsx
-type AnalyticsStage = "low" | "high";
-const ANALYTICS_STAGES: readonly AnalyticsStage[] = ["low", "high"];
-const ANALYTICS_DURATIONS: Record<AnalyticsStage, number> = { low: 1300, high: 1300 };
-const BAR_HEIGHTS: Record<AnalyticsStage, readonly number[]> = {
-  low: [30, 45, 25, 50],
-  high: [65, 85, 55, 95],
-};
-const BAR_LABELS = ["Tedn 1", "Tedn 2", "Tedn 3", "Tedn 4"] as const;
+type AnalyticsStage = "grow" | "hold";
+const ANALYTICS_STAGES: readonly AnalyticsStage[] = ["grow", "hold"];
+const ANALYTICS_DURATIONS: Record<AnalyticsStage, number> = { grow: 1200, hold: 1400 };
+const BAR_HEIGHTS: readonly number[] = [65, 85, 55, 95];
+const BAR_LABELS = ["1. teden", "2. teden", "3. teden", "4. teden"] as const;
 
 export function AnalyticsFrame({ isActive }: { isActive: boolean }) {
   const reduceMotion = useReducedMotion() ?? false;
-  const { stage } = useStageLoop(ANALYTICS_STAGES, ANALYTICS_DURATIONS, isActive);
-  const heights = BAR_HEIGHTS[stage];
+  const { cycle } = useStageLoop(ANALYTICS_STAGES, ANALYTICS_DURATIONS, isActive);
 
   return (
     <AppFrame>
@@ -562,11 +561,12 @@ export function AnalyticsFrame({ isActive }: { isActive: boolean }) {
           <p className="text-[11px] font-medium text-muted-foreground">Stopnja konverzije</p>
           <Counter to={34} suffix="%" className="text-lg font-semibold text-foreground" />
         </div>
-        <div className="flex grow gap-3 pb-1">
-          {heights.map((pct, i) => (
+        <div key={cycle} className="flex grow gap-3 pb-1">
+          {BAR_HEIGHTS.map((pct, i) => (
             <div key={BAR_LABELS[i]} className="flex grow flex-col items-center justify-end gap-1">
               <motion.div
                 className="w-full rounded-t-sm bg-primary/70"
+                initial={{ height: 0 }}
                 animate={{ height: `${pct}%` }}
                 transition={withReducedMotion(reduceMotion, { duration: 1, ease: EASE })}
               />
@@ -594,6 +594,8 @@ Expected: PASS, no unused-import warnings.
 git add "app/(public)/_components/product-walkthrough-frames.tsx"
 git commit -m "feat: add analytics-step animation for product walkthrough"
 ```
+
+**Note (discovered during execution):** this repo's eslint config includes React Compiler's `react-hooks/refs` (no ref read *or* write during render) and `react-hooks/set-state-in-effect` (no direct `setState` call in an effect body) rules. Task 1's original `useStageLoop` violated the latter with its `if (!isActive) { setTick(0); return; }` reset branch — not caught by Task 1's review since that review only ran `npm run typecheck`, not `npm run lint`. The fix (found and verified during Task 5's execution, across several rejected attempts — a ref-comparison-during-render approach and an eslint-disable both failed) removes the reset branch entirely; `useStageLoop` above and Task 6's `renderFrame` below reflect the corrected design. See the ledger for the full back-and-forth.
 
 ---
 
@@ -657,18 +659,27 @@ const STEPS: readonly WalkthroughStep[] = [
   },
 ] as const;
 
+/** Keying each frame by its own on/off state forces React to remount it
+ *  across the inactive/active boundary, so useStageLoop's internal timer
+ *  state always starts fresh at 0 on (re)activation — the "always restart
+ *  from the same beat" behavior is achieved via remount, not via any reset
+ *  logic inside the hook itself (which would require reading/writing a ref
+ *  during render or calling setState synchronously in an effect body, both
+ *  of which this repo's react-hooks/refs and react-hooks/set-state-in-effect
+ *  lint rules reject). */
 function renderFrame(stepId: string, isActive: boolean) {
+  const activationKey = isActive ? "on" : "off";
   switch (stepId) {
     case "capture":
-      return <CaptureFrame isActive={isActive} />;
+      return <CaptureFrame key={activationKey} isActive={isActive} />;
     case "organize":
-      return <OrganizeFrame isActive={isActive} />;
+      return <OrganizeFrame key={activationKey} isActive={isActive} />;
     case "kanban":
-      return <KanbanFrame isActive={isActive} />;
+      return <KanbanFrame key={activationKey} isActive={isActive} />;
     case "email":
-      return <EmailFrame isActive={isActive} />;
+      return <EmailFrame key={activationKey} isActive={isActive} />;
     case "analytics":
-      return <AnalyticsFrame isActive={isActive} />;
+      return <AnalyticsFrame key={activationKey} isActive={isActive} />;
     default:
       return null;
   }

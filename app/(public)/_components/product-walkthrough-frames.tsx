@@ -1,17 +1,15 @@
 "use client";
 
 import { AnimatePresence, motion, useReducedMotion, type Transition } from "framer-motion";
-import { type ReactNode, useEffect, useState } from "react";
-import { cn } from "@/lib/utils";
-import type { LeadSource, PipelineStage } from "@/db/schema";
-import { leadSourceBadgeClasses, pipelineStageDotClasses } from "@/lib/badge-styles";
-import { avatarTintClass, initials } from "@/lib/display";
-import { leadSourceLabels, pipelineStageLabels } from "@/lib/labels";
-import type { ScheduledEmailStatus } from "@/db/types";
-import { scheduledEmailStatusBadgeClasses } from "@/lib/badge-styles";
-import { scheduledEmailStatusLabels } from "@/lib/labels";
 import { CheckCircle2, GripVertical, Mail } from "lucide-react";
+import { type ReactNode, useEffect, useState } from "react";
 import { Counter } from "@/app/(public)/_components/counter";
+import type { LeadSource, PipelineStage } from "@/db/schema";
+import type { ScheduledEmailStatus } from "@/db/types";
+import { leadSourceBadgeClasses, pipelineStageDotClasses, scheduledEmailStatusBadgeClasses } from "@/lib/badge-styles";
+import { avatarTintClass, initials } from "@/lib/display";
+import { leadSourceLabels, pipelineStageLabels, scheduledEmailStatusLabels } from "@/lib/labels";
+import { cn } from "@/lib/utils";
 
 const EASE = [0.16, 1, 0.3, 1] as const;
 
@@ -138,7 +136,7 @@ interface OrganizeLead {
 
 const ORGANIZE_LEADS: readonly OrganizeLead[] = [
   { name: "Nika Kralj", email: "nika.kralj@example.com", source: "application", stage: "application_received" },
-  { name: "Bojan Vidic", email: "bojan.vidic@example.com", source: "lead_magnet", stage: "email_lead" },
+  { name: "Bojan Vidič", email: "bojan.vidic@example.com", source: "lead_magnet", stage: "email_lead" },
   { name: "Maja Novak", email: "maja.novak@example.com", source: "application", stage: "contacted" },
   { name: "Rok Kovačič", email: "rok.kovacic@example.com", source: "lead_magnet", stage: "client" },
 ];
@@ -361,19 +359,15 @@ export function EmailFrame({ isActive }: { isActive: boolean }) {
   );
 }
 
-type AnalyticsStage = "low" | "high";
-const ANALYTICS_STAGES: readonly AnalyticsStage[] = ["low", "high"];
-const ANALYTICS_DURATIONS: Record<AnalyticsStage, number> = { low: 1300, high: 1300 };
-const BAR_HEIGHTS: Record<AnalyticsStage, readonly number[]> = {
-  low: [30, 45, 25, 50],
-  high: [65, 85, 55, 95],
-};
-const BAR_LABELS = ["Tedn 1", "Tedn 2", "Tedn 3", "Tedn 4"] as const;
+type AnalyticsStage = "grow" | "hold";
+const ANALYTICS_STAGES: readonly AnalyticsStage[] = ["grow", "hold"];
+const ANALYTICS_DURATIONS: Record<AnalyticsStage, number> = { grow: 1200, hold: 1400 };
+const BAR_HEIGHTS: readonly number[] = [65, 85, 55, 95];
+const BAR_LABELS = ["1. teden", "2. teden", "3. teden", "4. teden"] as const;
 
 export function AnalyticsFrame({ isActive }: { isActive: boolean }) {
   const reduceMotion = useReducedMotion() ?? false;
-  const { stage } = useStageLoop(ANALYTICS_STAGES, ANALYTICS_DURATIONS, isActive);
-  const heights = BAR_HEIGHTS[stage];
+  const { cycle } = useStageLoop(ANALYTICS_STAGES, ANALYTICS_DURATIONS, isActive);
 
   return (
     <AppFrame>
@@ -382,11 +376,12 @@ export function AnalyticsFrame({ isActive }: { isActive: boolean }) {
           <p className="text-[11px] font-medium text-muted-foreground">Stopnja konverzije</p>
           <Counter to={34} suffix="%" className="text-lg font-semibold text-foreground" />
         </div>
-        <div className="flex grow gap-3 pb-1">
-          {heights.map((pct, i) => (
+        <div key={cycle} className="flex grow gap-3 pb-1">
+          {BAR_HEIGHTS.map((pct, i) => (
             <div key={BAR_LABELS[i]} className="flex grow flex-col items-center justify-end gap-1">
               <motion.div
                 className="w-full rounded-t-sm bg-primary/70"
+                initial={{ height: 0 }}
                 animate={{ height: `${pct}%` }}
                 transition={withReducedMotion(reduceMotion, { duration: 1, ease: EASE })}
               />
