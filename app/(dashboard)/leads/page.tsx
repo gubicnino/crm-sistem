@@ -12,6 +12,7 @@ import { PageHeader } from "@/components/dashboard/page-header";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { getTrainer } from "@/db/queries/trainers";
 import { leadSourceBadgeClasses, pipelineStageBadgeClasses } from "@/lib/badge-styles";
 import { avatarTintClass, initials } from "@/lib/display";
 import { leadSourceLabels, pipelineStageLabels } from "@/lib/labels";
@@ -40,7 +41,11 @@ export default async function LeadsPage({
   const search = params.q;
   const page = Math.max(1, Number.parseInt(params.page ?? "1", 10) || 1);
 
-  const { leads, total } = await listLeadsPaged(scope, { stage, source, search, page, pageSize: PAGE_SIZE });
+  const [{ leads, total }, trainer] = await Promise.all([
+    listLeadsPaged(scope, { stage, source, search, page, pageSize: PAGE_SIZE }),
+    getTrainer(scope),
+  ]);
+  const stageLabels = trainer?.stageLabels ?? pipelineStageLabels;
 
   function buildHref(nextPage: number) {
     const qp = new URLSearchParams();
@@ -61,7 +66,7 @@ export default async function LeadsPage({
       <div className="flex flex-wrap items-center gap-2">
         <LeadSearch current={search} />
         <SourceFilterChips current={source} />
-        <LeadFilters currentStage={stage} />
+        <LeadFilters currentStage={stage} stageLabels={stageLabels} />
       </div>
 
       {leads.length === 0 ? (
@@ -102,7 +107,7 @@ export default async function LeadsPage({
                   </TableCell>
                   <TableCell>
                     <Badge variant="secondary" className={pipelineStageBadgeClasses[lead.stage]}>
-                      {pipelineStageLabels[lead.stage]}
+                      {stageLabels[lead.stage]}
                     </Badge>
                   </TableCell>
                   <TableCell className="text-muted-foreground">{lead.createdAt.toLocaleDateString("sl-SI")}</TableCell>

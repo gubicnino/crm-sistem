@@ -20,6 +20,7 @@ export default async function LeadDetailPage({ params }: { params: Promise<{ id:
   if (!lead) notFound();
 
   const [notes, trainer] = await Promise.all([listNotes(scope, id), getTrainer(scope)]);
+  const stageLabels = trainer?.stageLabels ?? pipelineStageLabels;
 
   return (
     <div className="flex flex-col gap-6">
@@ -31,11 +32,11 @@ export default async function LeadDetailPage({ params }: { params: Promise<{ id:
         <div>
           <h1 className="text-xl font-semibold">{lead.name ?? lead.email}</h1>
           <p className="text-sm text-muted-foreground">
-            {leadSourceLabels[lead.source]} · {pipelineStageLabels[lead.stage]}
+            {leadSourceLabels[lead.source]} · {stageLabels[lead.stage]}
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <StageActions leadId={lead.id} currentStage={lead.stage} />
+          <StageActions leadId={lead.id} currentStage={lead.stage} stageLabels={stageLabels} />
           <EditLeadDialog
             leadId={lead.id}
             defaultValues={{ name: lead.name ?? undefined, email: lead.email, phone: lead.phone ?? undefined }}
