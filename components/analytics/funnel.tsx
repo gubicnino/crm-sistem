@@ -2,7 +2,6 @@ import type { ReactNode } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { PipelineStage } from "@/db/schema";
 import { pipelineStageDotClasses } from "@/lib/badge-styles";
-import { pipelineStageLabels } from "@/lib/labels";
 
 export interface FunnelStage {
   stage: PipelineStage;
@@ -14,7 +13,17 @@ export interface FunnelStage {
  *  db/queries/analytics.ts's getAnalyticsSummary for what "cumulative" means
  *  here (current-state based, not a true historical funnel — there's no
  *  stage-history table). */
-export function Funnel({ title, stages, dotClassName }: { title: string; stages: FunnelStage[]; dotClassName?: string }) {
+export function Funnel({
+  title,
+  stages,
+  stageLabels,
+  dotClassName,
+}: {
+  title: string;
+  stages: FunnelStage[];
+  stageLabels: Record<PipelineStage, string>;
+  dotClassName?: string;
+}) {
   const max = Math.max(1, ...stages.map((s) => s.count));
 
   return (
@@ -31,7 +40,7 @@ export function Funnel({ title, stages, dotClassName }: { title: string; stages:
             <div key={s.stage}>
               {i > 0 && dropoff !== null && <div className="py-0.5 pl-33 text-xs text-muted-foreground">↓ {dropoff}%</div>}
               <div className="flex items-center gap-2.5">
-                <span className="w-32 shrink-0 text-right text-xs text-muted-foreground">{pipelineStageLabels[s.stage]}</span>
+                <span className="w-32 shrink-0 text-right text-xs text-muted-foreground">{stageLabels[s.stage]}</span>
                 <div className="flex-1">
                   <div
                     className={`flex h-7 items-center rounded px-2.5 text-xs font-semibold text-white ${pipelineStageDotClasses[s.stage]}`}

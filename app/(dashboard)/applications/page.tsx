@@ -26,6 +26,7 @@ export default async function ApplicationsPage({
     listLeads(scope, { source: "application" }),
     getTrainer(scope),
   ]);
+  const stageLabels = trainer?.stageLabels ?? pipelineStageLabels;
 
   const selected = params.lead
     ? (applications.find((lead) => lead.id === params.lead) ?? applications[0] ?? null)
@@ -60,7 +61,7 @@ export default async function ApplicationsPage({
                 </div>
                 <div className="text-right">
                   <Badge variant="secondary" className={pipelineStageBadgeClasses[selected.stage]}>
-                    {pipelineStageLabels[selected.stage]}
+                    {stageLabels[selected.stage]}
                   </Badge>
                   <p className="mt-1.5 text-xs text-muted-foreground">
                     {sl.applications.submittedOn(selected.createdAt.toLocaleString("sl-SI"))}

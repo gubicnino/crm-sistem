@@ -4,6 +4,8 @@ import { NewLeadsChart } from "@/components/analytics/new-leads-chart";
 import { StatCard, type StatDelta } from "@/components/analytics/stat-card";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { getAnalyticsSummary } from "@/db/queries/analytics";
+import { getTrainer } from "@/db/queries/trainers";
+import type { PipelineStage } from "@/db/schema";
 import { leadSourceLabels, pipelineStageLabels } from "@/lib/labels";
 import { sl } from "@/lib/strings";
 import { requireTrainer } from "@/lib/tenant";
@@ -26,7 +28,8 @@ function ppDelta(current: number, previous: number): StatDelta {
 
 export default async function AnalyticsPage() {
   const scope = await requireTrainer();
-  const summary = await getAnalyticsSummary(scope);
+  const [summary, trainer] = await Promise.all([getAnalyticsSummary(scope), getTrainer(scope)]);
+  const stageLabels = trainer?.stageLabels ?? pipelineStageLabels;
 
   if (summary.totalLeads === 0) {
     return (
@@ -60,8 +63,8 @@ export default async function AnalyticsPage() {
       </div>
 
       <FunnelSection title={sl.analytics.funnelTitle} subtitle={sl.analytics.funnelSubtitle}>
-        <Funnel title={sl.analytics.funnelApplication} stages={summary.funnels.application} dotClassName="bg-hot" />
-        <Funnel title={sl.analytics.funnelLeadMagnet} stages={summary.funnels.lead_magnet} dotClassName="bg-primary" />
+        <Funnel title={sl.analytics.funnelApplication} stages={summary.funnels.application} stageLabels={stageLabels} dotClassName="bg-hot" />
+        <Funnel title={sl.analytics.funnelLeadMagnet} stages={summary.funnels.lead_magnet} stageLabels={stageLabels} dotClassName="bg-primary" />
       </FunnelSection>
 
       <NewLeadsChart data={summary.dailyNewLeads} />
@@ -70,7 +73,7 @@ export default async function AnalyticsPage() {
         <BarList
           title={sl.analytics.byStage}
           items={Object.entries(summary.byStage).map(([stage, count]) => ({
-            label: pipelineStageLabels[stage as keyof typeof pipelineStageLabels],
+            label: stageLabels[stage as PipelineStage],
             count,
           }))}
         />
