@@ -80,3 +80,44 @@ describe("stageLabelsSchema", () => {
     }
   });
 });
+
+// vi.mock factories are hoisted above all top-level const declarations, so
+// this can't close over the outer `scope` — it re-derives the same value via
+// the real systemScope instead.
+vi.mock("@/lib/tenant", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/tenant")>();
+  return {
+    ...actual,
+    requireTrainerOrThrow: vi.fn().mockResolvedValue(
+      actual.systemScope("11111111-1111-1111-1111-111111111111", "cron_daily"),
+    ),
+  };
+});
+
+vi.mock("next/cache", () => ({ refresh: vi.fn() }));
+
+describe("updateStageLabelsAction", () => {
+  it("returns a validation error without touching the DB when a label is invalid", async () => {
+    const { updateStageLabelsAction } = await import("@/lib/actions/settings");
+
+    const result = await updateStageLabelsAction({
+      email_lead: "",
+      application_received: "Prijava prejeta",
+      contacted: "Kontaktiran",
+      client: "Stranka",
+      lost: "Izgubljen",
+    });
+
+    expect(result).toEqual({ ok: false, error: "validation" });
+    expect(updateReturningMock).not.toHaveBeenCalled();
+  });
+
+  it("persists and returns ok on a valid full record", async () => {
+    const { updateStageLabelsAction } = await import("@/lib/actions/settings");
+    updateReturningMock.mockResolvedValue([{ id: scope.trainerId, stageLabels: FULL_LABELS }]);
+
+    const result = await updateStageLabelsAction(FULL_LABELS);
+
+    expect(result).toEqual({ ok: true });
+  });
+});
