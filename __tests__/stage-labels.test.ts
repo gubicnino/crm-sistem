@@ -67,7 +67,7 @@ describe("stageLabelsSchema", () => {
   });
 
   it("rejects a missing key", () => {
-    const { lost, ...missingLost } = VALID;
+    const missingLost = Object.fromEntries(Object.entries(VALID).filter(([key]) => key !== "lost"));
     const result = stageLabelsSchema.safeParse(missingLost);
     expect(result.success).toBe(false);
   });
