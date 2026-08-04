@@ -1,6 +1,6 @@
 import { and, eq, isNull } from "drizzle-orm";
 import { db } from "@/db";
-import { trainers, type Trainer } from "@/db/schema";
+import { trainers, type PipelineStage, type Trainer } from "@/db/schema";
 import type { ApplicationQuestion } from "@/db/types";
 import { type TrainerScope } from "@/lib/tenant";
 
@@ -74,6 +74,21 @@ export async function updateApplicationQuestions(
   const [updated] = await db
     .update(trainers)
     .set({ applicationQuestions: questions })
+    .where(eq(trainers.id, scope.trainerId))
+    .returning();
+  if (!updated) {
+    throw new Error("Trainer not found.");
+  }
+  return updated;
+}
+
+export async function updateStageLabels(
+  scope: TrainerScope,
+  labels: Record<PipelineStage, string>,
+): Promise<Trainer> {
+  const [updated] = await db
+    .update(trainers)
+    .set({ stageLabels: labels })
     .where(eq(trainers.id, scope.trainerId))
     .returning();
   if (!updated) {
