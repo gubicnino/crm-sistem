@@ -136,6 +136,19 @@ export const trainers = pgTable(
     email: text("email").notNull(),
     siteKey: text("site_key").notNull().unique(),
     applicationQuestions: jsonb("application_questions").$type<ApplicationQuestion[]>().notNull().default([]),
+    /** Per-trainer display text for the 5 pipeline_stage values — the enum
+     *  itself never changes (see CLAUDE.md's "ask first" gate); this only
+     *  overrides what's shown. Always the full 5-key record, never sparse —
+     *  mirrors the Slovenian defaults in lib/labels.ts's pipelineStageLabels
+     *  at the time this column was added, but is not kept in sync with that
+     *  file afterward (a trainer's row is expected to diverge as they rename). */
+    stageLabels: jsonb("stage_labels").$type<Record<PipelineStage, string>>().notNull().default({
+      email_lead: "E-poštni kontakt",
+      application_received: "Prijava prejeta",
+      contacted: "Kontaktiran",
+      client: "Stranka",
+      lost: "Izgubljen",
+    }),
     digestEnabled: boolean("digest_enabled").notNull().default(true),
     /** Per-trainer override of the RFC "Name <email>" sequence sender, e.g.
      *  "Janez Novak <janez@sub.innosplet.com>". Null falls back to the global

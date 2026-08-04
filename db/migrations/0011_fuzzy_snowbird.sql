@@ -1,0 +1,1 @@
+ALTER TABLE "trainers" ADD COLUMN "stage_labels" jsonb DEFAULT '{"email_lead":"E-poštni kontakt","application_received":"Prijava prejeta","contacted":"Kontaktiran","client":"Stranka","lost":"Izgubljen"}'::jsonb NOT NULL;
