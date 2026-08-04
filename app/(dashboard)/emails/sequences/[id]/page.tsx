@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { SequenceForm } from "@/components/emails/sequence-form";
 import { getEmailSequenceWithSteps, listLeadsEnrolledInSequence } from "@/db/queries/email-sequences";
 import { getTrainer } from "@/db/queries/trainers";
+import { pipelineStageLabels } from "@/lib/labels";
 import { sl } from "@/lib/strings";
 import { requireTrainer } from "@/lib/tenant";
 
@@ -26,7 +27,12 @@ export default async function EditEmailSequencePage({ params }: { params: Promis
           {sl.emails.sequenceBackToList}
         </Button>
       </PageHeader>
-      <SequenceForm sequence={result.sequence} steps={result.steps} trainerName={trainer?.name ?? ""} />
+      <SequenceForm
+        sequence={result.sequence}
+        steps={result.steps}
+        trainerName={trainer?.name ?? ""}
+        stageLabels={trainer?.stageLabels ?? pipelineStageLabels}
+      />
     </div>
   );
 }

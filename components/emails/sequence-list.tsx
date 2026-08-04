@@ -7,8 +7,9 @@ import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import type { EmailSequenceSummary } from "@/db/queries/email-sequences";
+import type { PipelineStage } from "@/db/schema";
 import { setEmailSequenceEnabledAction } from "@/lib/actions/email-sequences";
-import { leadSourceLabels, pipelineStageLabels } from "@/lib/labels";
+import { leadSourceLabels } from "@/lib/labels";
 import { sl } from "@/lib/strings";
 
 function ToggleEnabledButton({ sequenceId, enabled }: { sequenceId: string; enabled: boolean }) {
@@ -30,14 +31,20 @@ function ToggleEnabledButton({ sequenceId, enabled }: { sequenceId: string; enab
   );
 }
 
-function triggerLabel(sequence: EmailSequenceSummary): string {
+function triggerLabel(sequence: EmailSequenceSummary, stageLabels: Record<PipelineStage, string>): string {
   if (sequence.triggerType === "stage_entered") {
-    return `${sl.emails.sequenceTriggerTypeStageEntered} · ${sequence.triggerStage ? pipelineStageLabels[sequence.triggerStage] : ""}`;
+    return `${sl.emails.sequenceTriggerTypeStageEntered} · ${sequence.triggerStage ? stageLabels[sequence.triggerStage] : ""}`;
   }
   return `${sl.emails.sequenceTriggerTypeLeadCreated} · ${sequence.triggerSource ? leadSourceLabels[sequence.triggerSource] : sl.emails.sequenceTriggerAnySource}`;
 }
 
-export function SequenceList({ sequences }: { sequences: EmailSequenceSummary[] }) {
+export function SequenceList({
+  sequences,
+  stageLabels,
+}: {
+  sequences: EmailSequenceSummary[];
+  stageLabels: Record<PipelineStage, string>;
+}) {
   if (sequences.length === 0) {
     return <p className="text-muted-foreground">{sl.emails.sequencesEmpty}</p>;
   }
@@ -50,7 +57,7 @@ export function SequenceList({ sequences }: { sequences: EmailSequenceSummary[] 
             {sequence.name}
           </Link>
           <span className="rounded-full border bg-muted px-2.5 py-0.5 text-xs text-muted-foreground">
-            {triggerLabel(sequence)}
+            {triggerLabel(sequence, stageLabels)}
           </span>
           <span className="text-xs text-muted-foreground">
             {sl.emails.sequenceColumnSteps}: {sequence.stepCount}

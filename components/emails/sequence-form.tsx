@@ -19,7 +19,7 @@ import type { EmailSequence, EmailSequenceStep, LeadSource, PipelineStage } from
 import type { EmailDocNode } from "@/db/types";
 import { createEmailSequenceAction, updateEmailSequenceAction } from "@/lib/actions/email-sequences";
 import { MAX_SCHEDULE_DAYS, MAX_STEPS_PER_SEQUENCE } from "@/lib/email/constants";
-import { leadSourceLabels, pipelineStageLabels } from "@/lib/labels";
+import { leadSourceLabels } from "@/lib/labels";
 import { isTerminalStage, PIPELINE_STAGES } from "@/lib/pipeline";
 import { sl } from "@/lib/strings";
 import { cn } from "@/lib/utils";
@@ -97,10 +97,12 @@ export function SequenceForm({
   sequence,
   steps,
   trainerName,
+  stageLabels,
 }: {
   sequence?: EmailSequence;
   steps?: EmailSequenceStep[];
   trainerName: string;
+  stageLabels: Record<PipelineStage, string>;
 }) {
   const router = useRouter();
   const [isSaving, setIsSaving] = useState(false);
@@ -265,12 +267,12 @@ export function SequenceForm({
                 render={({ field }) => (
                   <Select value={field.value as string} onValueChange={field.onChange}>
                     <SelectTrigger size="sm" aria-label={sl.emails.sequenceTriggerStageLabel}>
-                      <SelectValue>{(value: PipelineStage) => pipelineStageLabels[value]}</SelectValue>
+                      <SelectValue>{(value: PipelineStage) => stageLabels[value]}</SelectValue>
                     </SelectTrigger>
                     <SelectContent>
                       {NON_TERMINAL_STAGES.map((stage) => (
                         <SelectItem key={stage} value={stage}>
-                          {pipelineStageLabels[stage]}
+                          {stageLabels[stage]}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -350,7 +352,7 @@ export function SequenceForm({
                                     );
                                   }}
                                 />
-                                {pipelineStageLabels[stage]}
+                                {stageLabels[stage]}
                               </label>
                             );
                           })}

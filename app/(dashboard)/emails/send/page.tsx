@@ -5,6 +5,8 @@ import { SourceFilterChips } from "@/components/leads/source-filter-chips";
 import { Button } from "@/components/ui/button";
 import { listLeads } from "@/db/queries/leads";
 import { leadSourceEnum, pipelineStageEnum, type LeadSource, type PipelineStage } from "@/db/schema";
+import { getTrainer } from "@/db/queries/trainers";
+import { pipelineStageLabels } from "@/lib/labels";
 import { isTerminalStage } from "@/lib/pipeline";
 import { sl } from "@/lib/strings";
 import { requireTrainer } from "@/lib/tenant";
@@ -27,7 +29,8 @@ export default async function SendBroadcastPage({
   const stage = isValidStage(params.stage) ? params.stage : undefined;
   const source = isValidSource(params.source) ? params.source : undefined;
 
-  const leads = await listLeads(scope, { stage, source });
+  const [leads, trainer] = await Promise.all([listLeads(scope, { stage, source }), getTrainer(scope)]);
+  const stageLabels = trainer?.stageLabels ?? pipelineStageLabels;
   // Not selectable even in this list — sendBroadcast excludes them again
   // server-side regardless, but there's no point offering an unusable choice.
   const eligibleLeads = leads.filter((lead) => !lead.unsubscribedAt && !isTerminalStage(lead.stage));
@@ -41,10 +44,10 @@ export default async function SendBroadcastPage({
         </Button>
       </div>
       <div className="flex items-center gap-2">
-        <LeadFilters currentStage={stage} />
+        <LeadFilters currentStage={stage} stageLabels={stageLabels} />
         <SourceFilterChips current={source} />
       </div>
-      <BroadcastForm leads={eligibleLeads} />
+      <BroadcastForm leads={eligibleLeads} stageLabels={stageLabels} />
     </div>
   );
 }

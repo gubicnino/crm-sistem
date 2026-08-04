@@ -12,10 +12,10 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import type { Lead } from "@/db/schema";
+import type { Lead, PipelineStage } from "@/db/schema";
 import type { EmailDocNode } from "@/db/types";
 import { sendBroadcastAction } from "@/lib/actions/broadcast";
-import { leadSourceLabels, pipelineStageLabels } from "@/lib/labels";
+import { leadSourceLabels } from "@/lib/labels";
 import { sl } from "@/lib/strings";
 import { broadcastFormSchema } from "@/lib/validation/broadcast";
 
@@ -25,7 +25,7 @@ const EMPTY_BODY: EmailDocNode = { type: "doc", content: [{ type: "paragraph", c
  *  terminal-stage=false (see app/(dashboard)/emails/send/page.tsx) — this
  *  component never re-derives that filter, it only lets the trainer pick
  *  among what's already eligible. */
-export function BroadcastForm({ leads }: { leads: Lead[] }) {
+export function BroadcastForm({ leads, stageLabels }: { leads: Lead[]; stageLabels: Record<PipelineStage, string> }) {
   const router = useRouter();
   // Minted once per compose session (not per submit attempt) — a
   // double-click or a retried request carries the SAME id, so the server
@@ -133,7 +133,7 @@ export function BroadcastForm({ leads }: { leads: Lead[] }) {
                     <TableCell>{lead.name ?? lead.email}</TableCell>
                     <TableCell>{lead.email}</TableCell>
                     <TableCell>
-                      <Badge variant="secondary">{pipelineStageLabels[lead.stage]}</Badge>
+                      <Badge variant="secondary">{stageLabels[lead.stage]}</Badge>
                     </TableCell>
                     <TableCell>{leadSourceLabels[lead.source]}</TableCell>
                   </TableRow>

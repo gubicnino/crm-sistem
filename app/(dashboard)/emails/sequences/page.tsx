@@ -4,13 +4,15 @@ import { SegmentedNav } from "@/components/dashboard/segmented-nav";
 import { Button } from "@/components/ui/button";
 import { SequenceList } from "@/components/emails/sequence-list";
 import { listEmailSequencesForTrainer } from "@/db/queries/email-sequences";
+import { getTrainer } from "@/db/queries/trainers";
 import { MAX_SEQUENCES_PER_TRAINER } from "@/lib/email/constants";
+import { pipelineStageLabels } from "@/lib/labels";
 import { sl } from "@/lib/strings";
 import { requireTrainer } from "@/lib/tenant";
 
 export default async function EmailSequencesPage() {
   const scope = await requireTrainer();
-  const sequences = await listEmailSequencesForTrainer(scope);
+  const [sequences, trainer] = await Promise.all([listEmailSequencesForTrainer(scope), getTrainer(scope)]);
   const atLimit = sequences.length >= MAX_SEQUENCES_PER_TRAINER;
 
   return (
@@ -32,7 +34,7 @@ export default async function EmailSequencesPage() {
         {sequences.length} / {MAX_SEQUENCES_PER_TRAINER} {sl.emails.sequencesTitle.toLowerCase()}
         {atLimit && ` — ${sl.emails.sequenceLimitReached}`}
       </p>
-      <SequenceList sequences={sequences} />
+      <SequenceList sequences={sequences} stageLabels={trainer?.stageLabels ?? pipelineStageLabels} />
     </div>
   );
 }

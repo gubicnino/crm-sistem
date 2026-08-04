@@ -6,6 +6,7 @@ import { SequenceForm } from "@/components/emails/sequence-form";
 import { listEmailSequencesForTrainer } from "@/db/queries/email-sequences";
 import { getTrainer } from "@/db/queries/trainers";
 import { MAX_SEQUENCES_PER_TRAINER } from "@/lib/email/constants";
+import { pipelineStageLabels } from "@/lib/labels";
 import { sl } from "@/lib/strings";
 import { requireTrainer } from "@/lib/tenant";
 
@@ -24,7 +25,7 @@ export default async function NewEmailSequencePage() {
           {sl.emails.sequenceBackToList}
         </Button>
       </PageHeader>
-      <SequenceForm trainerName={trainer?.name ?? ""} />
+      <SequenceForm trainerName={trainer?.name ?? ""} stageLabels={trainer?.stageLabels ?? pipelineStageLabels} />
     </div>
   );
 }
