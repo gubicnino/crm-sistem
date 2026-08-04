@@ -83,6 +83,7 @@ export const sl = {
   },
   pipeline: {
     title: "Pipeline",
+    renameStageAriaLabel: (label: string) => `Preimenuj fazo "${label}"`,
   },
   applications: {
     title: "Izpolnjene forme",

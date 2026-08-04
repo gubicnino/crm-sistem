@@ -40,3 +40,43 @@ describe("updateStageLabels", () => {
     await expect(updateStageLabels(scope, FULL_LABELS)).rejects.toThrow("Trainer not found.");
   });
 });
+
+import { stageLabelsSchema } from "@/lib/validation/pipeline";
+
+describe("stageLabelsSchema", () => {
+  const VALID = {
+    email_lead: "Nov email",
+    application_received: "Prijava prejeta",
+    contacted: "Kontaktiran",
+    client: "Stranka",
+    lost: "Izgubljen",
+  };
+
+  it("accepts a full valid record", () => {
+    expect(stageLabelsSchema.safeParse(VALID).success).toBe(true);
+  });
+
+  it("rejects an empty label", () => {
+    const result = stageLabelsSchema.safeParse({ ...VALID, contacted: "   " });
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects a label over 30 characters", () => {
+    const result = stageLabelsSchema.safeParse({ ...VALID, contacted: "a".repeat(31) });
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects a missing key", () => {
+    const { lost, ...missingLost } = VALID;
+    const result = stageLabelsSchema.safeParse(missingLost);
+    expect(result.success).toBe(false);
+  });
+
+  it("trims surrounding whitespace", () => {
+    const result = stageLabelsSchema.safeParse({ ...VALID, contacted: "  V pogovoru  " });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.contacted).toBe("V pogovoru");
+    }
+  });
+});
