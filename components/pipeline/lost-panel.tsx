@@ -3,9 +3,9 @@
 import { useDroppable } from "@dnd-kit/core";
 import { ChevronDown } from "lucide-react";
 import { useState } from "react";
+import { EditableStageLabel } from "@/components/pipeline/editable-stage-label";
 import { LeadCard } from "@/components/pipeline/lead-card";
 import type { Lead } from "@/db/schema";
-import { pipelineStageLabels } from "@/lib/labels";
 import { cn } from "@/lib/utils";
 
 /**
@@ -15,7 +15,17 @@ import { cn } from "@/lib/utils";
  * the drop target that fires cancelSequenceForLead — losing it would
  * silently disable the product's most important cancellation trigger.
  */
-export function LostPanel({ leads, disabled }: { leads: Lead[]; disabled?: boolean }) {
+export function LostPanel({
+  label,
+  leads,
+  disabled,
+  onRename,
+}: {
+  label: string;
+  leads: Lead[];
+  disabled?: boolean;
+  onRename: (next: string) => void;
+}) {
   const [open, setOpen] = useState(false);
   const { setNodeRef, isOver } = useDroppable({ id: "lost", disabled });
 
@@ -29,16 +39,14 @@ export function LostPanel({ leads, disabled }: { leads: Lead[]; disabled?: boole
 
   return (
     <div ref={setNodeRef} className={cn("rounded-lg border bg-card transition-colors", isOver && "bg-destructive-tint/40")}>
-      <button
-        type="button"
-        onClick={() => setOpen((o) => !o)}
-        className="flex w-full items-center gap-2 px-4 py-3 text-left"
-      >
-        <ChevronDown className={cn("size-3.5 text-muted-foreground transition-transform", !open && "-rotate-90")} />
-        <span className="size-2 shrink-0 rounded-full bg-destructive" />
-        <span className="text-sm font-semibold">{pipelineStageLabels.lost}</span>
+      <div className="flex w-full items-center gap-2 px-4 py-3">
+        <button type="button" onClick={() => setOpen((o) => !o)} className="flex items-center gap-2">
+          <ChevronDown className={cn("size-3.5 text-muted-foreground transition-transform", !open && "-rotate-90")} />
+          <span className="size-2 shrink-0 rounded-full bg-destructive" />
+        </button>
+        <EditableStageLabel label={label} onSave={onRename} disabled={disabled} className="text-sm font-semibold" />
         <span className="text-xs text-muted-foreground">{leads.length}</span>
-      </button>
+      </div>
       {open && (
         <div className="flex gap-3 overflow-x-auto px-4 pb-4">
           {leads.length === 0 ? (

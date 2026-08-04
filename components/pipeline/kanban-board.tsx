@@ -7,18 +7,25 @@ import { KanbanColumn } from "@/components/pipeline/kanban-column";
 import { LostPanel } from "@/components/pipeline/lost-panel";
 import { pipelineStageEnum, type Lead, type PipelineStage } from "@/db/schema";
 import { moveLeadStageAction } from "@/lib/actions/leads";
-import { pipelineStageLabels } from "@/lib/labels";
+import { updateStageLabelsAction } from "@/lib/actions/settings";
 import { ACTIVE_PIPELINE_STAGES } from "@/lib/pipeline";
 import { sl } from "@/lib/strings";
 
 type GroupedLeads = Record<PipelineStage, Lead[]>;
+type StageLabels = Record<PipelineStage, string>;
 
 interface MoveAction {
   leadId: string;
   nextStage: PipelineStage;
 }
 
-export function KanbanBoard({ initialGrouped }: { initialGrouped: GroupedLeads }) {
+export function KanbanBoard({
+  initialGrouped,
+  initialStageLabels,
+}: {
+  initialGrouped: GroupedLeads;
+  initialStageLabels: StageLabels;
+}) {
   const [isPending, startTransition] = useTransition();
   const [grouped, applyOptimisticMove] = useOptimistic(
     initialGrouped,
@@ -35,6 +42,14 @@ export function KanbanBoard({ initialGrouped }: { initialGrouped: GroupedLeads }
       next[nextStage] = [...next[nextStage], { ...moved, stage: nextStage }];
       return next;
     },
+  );
+
+  const [stageLabels, applyOptimisticLabel] = useOptimistic(
+    initialStageLabels,
+    (state: StageLabels, { stage, label }: { stage: PipelineStage; label: string }): StageLabels => ({
+      ...state,
+      [stage]: label,
+    }),
   );
 
   function handleDragEnd(event: DragEndEvent) {
@@ -63,6 +78,16 @@ export function KanbanBoard({ initialGrouped }: { initialGrouped: GroupedLeads }
     });
   }
 
+  function handleRename(stage: PipelineStage, next: string) {
+    startTransition(async () => {
+      applyOptimisticLabel({ stage, label: next });
+      const result = await updateStageLabelsAction({ ...stageLabels, [stage]: next });
+      if (!result.ok) {
+        toast.error(sl.errors.unexpected);
+      }
+    });
+  }
+
   return (
     <DndContext onDragEnd={handleDragEnd}>
       <div className="flex flex-col gap-4">
@@ -71,13 +96,19 @@ export function KanbanBoard({ initialGrouped }: { initialGrouped: GroupedLeads }
             <KanbanColumn
               key={stage}
               stage={stage}
-              label={pipelineStageLabels[stage]}
+              label={stageLabels[stage]}
               leads={grouped[stage]}
               disabled={isPending}
+              onRename={(next) => handleRename(stage, next)}
             />
           ))}
         </div>
-        <LostPanel leads={grouped.lost} disabled={isPending} />
+        <LostPanel
+          label={stageLabels.lost}
+          leads={grouped.lost}
+          disabled={isPending}
+          onRename={(next) => handleRename("lost", next)}
+        />
       </div>
     </DndContext>
   );

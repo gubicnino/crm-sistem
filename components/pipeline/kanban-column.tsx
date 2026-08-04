@@ -1,6 +1,7 @@
 "use client";
 
 import { useDroppable } from "@dnd-kit/core";
+import { EditableStageLabel } from "@/components/pipeline/editable-stage-label";
 import { LeadCard } from "@/components/pipeline/lead-card";
 import type { Lead, PipelineStage } from "@/db/schema";
 import { pipelineStageDotClasses } from "@/lib/badge-styles";
@@ -11,11 +12,13 @@ export function KanbanColumn({
   label,
   leads,
   disabled,
+  onRename,
 }: {
   stage: PipelineStage;
   label: string;
   leads: Lead[];
   disabled?: boolean;
+  onRename: (next: string) => void;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: stage, disabled });
 
@@ -29,7 +32,7 @@ export function KanbanColumn({
     >
       <div className="flex items-center gap-2 px-1">
         <span className={cn("size-2 shrink-0 rounded-full", pipelineStageDotClasses[stage])} />
-        <h2 className="text-sm font-medium">{label}</h2>
+        <EditableStageLabel label={label} onSave={onRename} disabled={disabled} className="text-sm font-medium" />
         <span className="ml-auto rounded-full bg-card px-1.5 py-0.5 text-[11px] text-muted-foreground ring-1 ring-foreground/10">
           {leads.length}
         </span>
