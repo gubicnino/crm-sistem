@@ -15,7 +15,10 @@ export async function createNoteAction(leadId: string, body: string): Promise<Ac
   }
 
   const scope = await requireTrainerOrThrow();
-  await createNote(scope, leadId, trimmed);
+  const note = await createNote(scope, leadId, trimmed);
+  if (!note) {
+    return { ok: false, error: "notFound" };
+  }
   refresh();
   return { ok: true };
 }

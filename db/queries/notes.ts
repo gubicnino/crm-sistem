@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 import { db } from "@/db";
-import { notes, type Note } from "@/db/schema";
+import { leads, notes, type Note } from "@/db/schema";
 import { scoped, type TrainerScope } from "@/lib/tenant";
 
 export async function listNotes(scope: TrainerScope, leadId: string): Promise<Note[]> {
@@ -11,7 +11,18 @@ export async function listNotes(scope: TrainerScope, leadId: string): Promise<No
     .orderBy(notes.createdAt);
 }
 
-export async function createNote(scope: TrainerScope, leadId: string, body: string): Promise<Note> {
+/** Returns null if leadId doesn't exist or belongs to another trainer — notes.leadId
+ *  has no DB-level FK back to notes.trainerId, so ownership must be checked here. */
+export async function createNote(scope: TrainerScope, leadId: string, body: string): Promise<Note | null> {
+  const [lead] = await db
+    .select({ id: leads.id })
+    .from(leads)
+    .where(scoped(leads, scope, eq(leads.id, leadId)))
+    .limit(1);
+  if (!lead) {
+    return null;
+  }
+
   const [note] = await db
     .insert(notes)
     .values({ trainerId: scope.trainerId, leadId, body })
