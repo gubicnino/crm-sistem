@@ -25,7 +25,7 @@ function ToggleEnabledButton({ sequenceId, enabled }: { sequenceId: string; enab
   }
 
   return (
-    <Button variant="outline" size="sm" onClick={handleClick} disabled={isPending}>
+    <Button variant="outline" size="sm" onClick={handleClick} loading={isPending}>
       {enabled ? sl.emails.sequenceDisable : sl.emails.sequenceEnable}
     </Button>
   );

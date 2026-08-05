@@ -55,7 +55,7 @@ export function NotesPanel({ leadId, notes }: { leadId: string; notes: Note[] })
                   variant="ghost"
                   size="sm"
                   onClick={() => handleDelete(note.id)}
-                  disabled={isPending}
+                  loading={isPending}
                 >
                   {sl.leads.deleteNoteButton}
                 </Button>
@@ -66,7 +66,7 @@ export function NotesPanel({ leadId, notes }: { leadId: string; notes: Note[] })
 
         <form ref={formRef} action={handleSubmit} className="flex flex-col gap-2">
           <Textarea name="body" placeholder={sl.leads.addNotePlaceholder} required />
-          <Button type="submit" size="sm" disabled={isPending} className="self-end">
+          <Button type="submit" size="sm" loading={isPending} className="self-end">
             {sl.leads.addNoteButton}
           </Button>
         </form>

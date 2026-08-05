@@ -11,7 +11,7 @@ import { sl } from "@/lib/strings";
 function SubmitButton() {
   const { pending } = useFormStatus();
   return (
-    <Button type="submit" disabled={pending} className="w-full">
+    <Button type="submit" loading={pending} className="w-full">
       {sl.auth.registerButton}
     </Button>
   );

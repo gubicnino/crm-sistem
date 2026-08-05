@@ -15,9 +15,10 @@ import {
 } from "@/components/ui/sidebar";
 import { initials } from "@/lib/display";
 import { sl } from "@/lib/strings";
-import { BarChart3, ClipboardList, HelpCircle, KanbanSquare, LogOut, Mail, Users } from "lucide-react";
+import { BarChart3, ClipboardList, HelpCircle, KanbanSquare, Loader2, LogOut, Mail, Users } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useState } from "react";
 
 const NAV_ITEMS = [
   { href: "/leads", label: sl.nav.leads, icon: Users },
@@ -42,6 +43,20 @@ export function AppSidebar({
     .sort((a, b) => b.href.length - a.href.length)
     .find((item) => pathname === item.href || pathname.startsWith(`${item.href}/`))?.href;
 
+  // Set on click so the tab reacts the instant it's pressed, not once the
+  // new page finishes rendering — Next's own useLinkStatus is skipped for
+  // already-prefetched links, which every always-visible sidebar item is.
+  // Cleared by comparing against the last-seen pathname during render
+  // (React's documented pattern for resetting state on a prop change)
+  // rather than in an effect, since a plain setState-in-effect here would
+  // trigger an extra render pass for no visible benefit.
+  const [pendingHref, setPendingHref] = useState<string | null>(null);
+  const [lastPathname, setLastPathname] = useState(pathname);
+  if (pathname !== lastPathname) {
+    setLastPathname(pathname);
+    setPendingHref(null);
+  }
+
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader>
@@ -55,10 +70,16 @@ export function AppSidebar({
             <SidebarMenu>
               {NAV_ITEMS.map(({ href, label, icon: Icon }) => {
                 const isActive = href === activeHref;
+                const isPending = pendingHref === href && !isActive;
                 return (
                   <SidebarMenuItem key={href}>
-                    <SidebarMenuButton isActive={isActive} tooltip={label} render={<Link href={href} />}>
-                      <Icon />
+                    <SidebarMenuButton
+                      isActive={isActive}
+                      tooltip={label}
+                      className={isPending ? "opacity-60" : undefined}
+                      render={<Link href={href} onClick={() => setPendingHref(href)} />}
+                    >
+                      {isPending ? <Loader2 className="animate-spin" /> : <Icon />}
                       <span>{label}</span>
                     </SidebarMenuButton>
                   </SidebarMenuItem>

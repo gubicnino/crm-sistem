@@ -63,10 +63,10 @@ export function FromEmailDialog({ trainerId, currentValue }: { trainerId: string
           {error && <p className="text-sm text-destructive">{error}</p>}
         </div>
         <DialogFooter>
-          <Button variant="ghost" disabled={isPending} onClick={() => save(null)}>
+          <Button variant="ghost" loading={isPending} onClick={() => save(null)}>
             {sl.admin.fromEmailClear}
           </Button>
-          <Button disabled={isPending} onClick={() => save(value)}>
+          <Button loading={isPending} onClick={() => save(value)}>
             {sl.admin.fromEmailSave}
           </Button>
         </DialogFooter>

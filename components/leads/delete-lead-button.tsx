@@ -44,7 +44,7 @@ export function DeleteLeadButton({ leadId }: { leadId: string }) {
           <Button variant="outline" onClick={() => setOpen(false)} disabled={isPending}>
             {sl.leads.cancelButton}
           </Button>
-          <Button variant="destructive" onClick={handleConfirm} disabled={isPending}>
+          <Button variant="destructive" onClick={handleConfirm} loading={isPending}>
             {sl.leads.deleteLead}
           </Button>
         </DialogFooter>

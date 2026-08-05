@@ -55,7 +55,7 @@ export function ApplyToExistingButton({ sequenceId, enrolledCount }: { sequenceI
           <Button variant="outline" onClick={() => setOpen(false)} disabled={isPending}>
             {sl.leads.cancelButton}
           </Button>
-          <Button onClick={handleConfirm} disabled={isPending}>
+          <Button onClick={handleConfirm} loading={isPending}>
             {sl.emails.applyConfirmButton}
           </Button>
         </DialogFooter>

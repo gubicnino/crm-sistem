@@ -191,7 +191,7 @@ export function BroadcastForm({ leads, stageLabels }: { leads: Lead[]; stageLabe
         </CardContent>
       </Card>
 
-      <Button type="button" onClick={handleOpenConfirm} disabled={isPending} className="self-end">
+      <Button type="button" onClick={handleOpenConfirm} loading={isPending} className="self-end">
         {sl.emails.sendConfirmButton}
       </Button>
 
@@ -205,7 +205,7 @@ export function BroadcastForm({ leads, stageLabels }: { leads: Lead[]; stageLabe
             <Button variant="outline" onClick={() => setConfirmOpen(false)} disabled={isPending}>
               {sl.leads.cancelButton}
             </Button>
-            <Button onClick={handleConfirmSend} disabled={isPending}>
+            <Button onClick={handleConfirmSend} loading={isPending}>
               {sl.emails.sendConfirmButton}
             </Button>
           </DialogFooter>

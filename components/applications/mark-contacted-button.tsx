@@ -21,7 +21,7 @@ export function MarkContactedButton({ leadId }: { leadId: string }) {
   }
 
   return (
-    <Button onClick={handleClick} disabled={isPending}>
+    <Button onClick={handleClick} loading={isPending}>
       {sl.applications.markContacted}
     </Button>
   );

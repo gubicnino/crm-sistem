@@ -12,7 +12,7 @@ import { sl } from "@/lib/strings";
 function SubmitButton() {
   const { pending } = useFormStatus();
   return (
-    <Button type="submit" disabled={pending}>
+    <Button type="submit" loading={pending}>
       {sl.admin.inviteSubmit}
     </Button>
   );

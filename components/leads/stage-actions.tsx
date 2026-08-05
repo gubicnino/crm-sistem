@@ -54,7 +54,7 @@ export function StageActions({
           ))}
         </SelectContent>
       </Select>
-      <Button variant="outline" size="sm" onClick={handleStopSequence} disabled={isPending}>
+      <Button variant="outline" size="sm" onClick={handleStopSequence} loading={isPending}>
         {sl.leads.stopSequence}
       </Button>
     </div>

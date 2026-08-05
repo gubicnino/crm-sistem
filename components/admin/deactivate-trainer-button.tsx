@@ -46,7 +46,7 @@ export function DeactivateTrainerButton({ trainerId, isActive }: { trainerId: st
           <Button variant="outline" onClick={() => setOpen(false)} disabled={isPending}>
             {sl.leads.cancelButton}
           </Button>
-          <Button variant={isActive ? "destructive" : "default"} onClick={handleConfirm} disabled={isPending}>
+          <Button variant={isActive ? "destructive" : "default"} onClick={handleConfirm} loading={isPending}>
             {isActive ? sl.admin.deactivate : sl.admin.reactivate}
           </Button>
         </DialogFooter>
