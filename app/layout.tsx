@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import NextTopLoader from "nextjs-toploader";
+import { Analytics } from "@vercel/analytics/next";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import "./globals.css";
@@ -34,6 +35,7 @@ export default function RootLayout({
         <NextTopLoader color="var(--primary)" showSpinner={false} height={2} shadow={false} />
         <TooltipProvider>{children}</TooltipProvider>
         <Toaster />
+        <Analytics />
       </body>
     </html>
   );
